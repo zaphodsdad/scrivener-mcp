@@ -430,7 +430,8 @@ async def set_llm_config(config: LLMConfig):
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     """Send a message to the LLM with optional context."""
-    if not _llm_config["api_key"]:
+    # Ollama doesn't require an API key
+    if not _llm_config["api_key"] and _llm_config["provider"] not in ("ollama", "custom"):
         raise HTTPException(status_code=400, detail="No API key configured")
 
     # Build the prompt
@@ -465,22 +466,22 @@ Be concise but helpful. When suggesting edits, show the revised text clearly."""
                 data = response.json()
                 return {"response": data["content"][0]["text"]}
             else:
-                # OpenAI-compatible API (OpenRouter, OpenAI, etc.)
+                # OpenAI-compatible API (OpenRouter, OpenAI, Ollama, etc.)
+                headers = {"Content-Type": "application/json"}
+                if _llm_config["api_key"]:
+                    headers["Authorization"] = f"Bearer {_llm_config['api_key']}"
+
                 response = await client.post(
                     f"{_llm_config['base_url']}/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {_llm_config['api_key']}",
-                        "Content-Type": "application/json",
-                    },
+                    headers=headers,
                     json={
                         "model": _llm_config["model"],
                         "messages": [
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": user_message},
                         ],
-                        "max_tokens": 4096,
                     },
-                    timeout=60.0,
+                    timeout=120.0,  # Longer timeout for local models
                 )
                 response.raise_for_status()
                 data = response.json()
