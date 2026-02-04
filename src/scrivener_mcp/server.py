@@ -519,6 +519,11 @@ def create_snapshot(identifier: str, title: str | None = None) -> str:
     """
     project = get_project()
 
+    if project.is_locked:
+        return """❌ Project is open in Scrivener!
+
+Close Scrivener before creating snapshots to avoid conflicts."""
+
     # Find the document
     item = project.find_by_uuid(identifier)
     if not item:
