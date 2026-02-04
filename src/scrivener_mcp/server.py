@@ -178,7 +178,9 @@ def open_project(path: str) -> str:
     return f"""Opened project: {_project.name}
 Path: {_project.path}
 Total items: {total_items}
-Documents: {text_items}{lock_warning}"""
+Documents: {text_items}{lock_warning}
+
+💡 **Tip:** Use `scan_project` to get a bird's eye view of the manuscript (chapter summaries, word counts, opening lines). This helps you understand the full project without reading every document."""
 
 
 @mcp.tool()
