@@ -1,5 +1,6 @@
 """MCP Server for Scrivener projects."""
 
+import argparse
 import os
 import platform
 from pathlib import Path
@@ -485,8 +486,44 @@ Notes:
 
 
 def main():
-    """Run the MCP server."""
-    mcp.run()
+    """Run the MCP server.
+
+    Supports two transport modes:
+    - stdio (default): For Claude Desktop and local MCP clients
+    - streamable-http: For ChatGPT and remote HTTP clients
+
+    Usage:
+        scrivener-mcp              # stdio mode (Claude Desktop)
+        scrivener-mcp --http       # HTTP mode on port 8000
+        scrivener-mcp --http --port 9000  # HTTP mode on custom port
+    """
+    parser = argparse.ArgumentParser(
+        description="MCP Server for Scrivener writing projects"
+    )
+    parser.add_argument(
+        "--http",
+        action="store_true",
+        help="Run as HTTP server (for ChatGPT/remote clients) instead of stdio"
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port for HTTP server (default: 8000)"
+    )
+    parser.add_argument(
+        "--host",
+        default="0.0.0.0",
+        help="Host for HTTP server (default: 0.0.0.0)"
+    )
+
+    args = parser.parse_args()
+
+    if args.http:
+        print(f"Starting Scrivener MCP server (HTTP) on {args.host}:{args.port}")
+        mcp.run(transport="streamable-http", host=args.host, port=args.port)
+    else:
+        mcp.run()  # stdio transport for Claude Desktop
 
 
 if __name__ == "__main__":

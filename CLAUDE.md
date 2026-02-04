@@ -142,14 +142,24 @@ scrivener-mcp  # Ctrl+C to exit
 
 ## Running the Server
 
-**Option 1: Environment variable**
+### Transport Modes
+
+The server supports two transport modes:
+
+```bash
+scrivener-mcp              # stdio mode (default, for Claude Desktop)
+scrivener-mcp --http       # HTTP mode on port 8000 (for ChatGPT/remote)
+scrivener-mcp --http --port 9000 --host 127.0.0.1  # Custom port/host
+```
+
+### Option 1: Environment variable
 ```bash
 export SCRIVENER_PROJECT="/path/to/Your Novel.scriv"
 scrivener-mcp
 ```
 
-**Option 2: No config needed**
-Just run `scrivener-mcp` and use `find_projects` or `open_project` tools via Claude.
+### Option 2: No config needed
+Just run `scrivener-mcp` and use `find_projects` or `open_project` tools via the AI assistant.
 
 ## Claude Desktop Configuration
 
@@ -175,6 +185,37 @@ Then restart Claude Desktop. You can ask things like:
 - "Read Chapter 5"
 - "What's my word count by chapter?"
 - "Show me the synopsis for Chapter 3"
+
+## ChatGPT Configuration
+
+ChatGPT requires HTTP transport and a publicly accessible URL.
+
+### Step 1: Start HTTP server
+```bash
+source .venv/bin/activate
+export SCRIVENER_PROJECT="/path/to/Your Novel.scriv"
+scrivener-mcp --http --port 8000
+```
+
+### Step 2: Expose via tunnel
+
+**Quick tunnel (no account needed):**
+```bash
+cloudflared tunnel --url http://localhost:8000
+# Gives you: https://random-words.trycloudflare.com
+```
+
+**Persistent tunnel (with your domain):**
+```bash
+cloudflared tunnel create scrivener
+cloudflared tunnel route dns scrivener mcp.yourdomain.com
+cloudflared tunnel run scrivener
+```
+
+### Step 3: Configure ChatGPT
+1. Open ChatGPT Desktop (Pro/Plus required)
+2. Settings → Connectors → Advanced → Developer mode
+3. Add MCP server: `https://your-tunnel-url.com/mcp`
 
 ---
 
