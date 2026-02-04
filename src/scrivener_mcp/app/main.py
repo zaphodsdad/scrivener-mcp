@@ -99,6 +99,47 @@ async def list_projects(search_path: Optional[str] = None):
     }
 
 
+@app.get("/api/browse")
+async def browse_directory(path: Optional[str] = None):
+    """Browse filesystem directories to find .scriv projects."""
+    if not path:
+        # Start at home directory
+        browse_path = Path.home()
+    else:
+        browse_path = Path(path).expanduser().resolve()
+
+    if not browse_path.exists():
+        raise HTTPException(status_code=404, detail=f"Path not found: {path}")
+
+    if not browse_path.is_dir():
+        raise HTTPException(status_code=400, detail=f"Not a directory: {path}")
+
+    items = []
+    try:
+        for item in sorted(browse_path.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
+            # Skip hidden files
+            if item.name.startswith("."):
+                continue
+
+            if item.is_dir():
+                is_scriv = item.suffix == ".scriv"
+                items.append({
+                    "name": item.name,
+                    "path": str(item),
+                    "is_dir": True,
+                    "is_scriv": is_scriv,
+                })
+            # Skip regular files in browser
+    except PermissionError:
+        pass
+
+    return {
+        "current": str(browse_path),
+        "parent": str(browse_path.parent) if browse_path.parent != browse_path else None,
+        "items": items,
+    }
+
+
 @app.post("/api/project/open")
 async def open_project(data: ProjectPath):
     """Open a Scrivener project."""

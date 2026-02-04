@@ -397,6 +397,105 @@ body {
     overflow-y: auto;
 }
 
+.modal-content.modal-wide {
+    min-width: 500px;
+    max-width: 700px;
+}
+
+/* Modal Tabs */
+.modal-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+}
+
+.modal-tab {
+    padding: 0.5rem 1rem;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-radius: 4px;
+}
+
+.modal-tab:hover {
+    background: var(--bg-hover);
+}
+
+.modal-tab.active {
+    background: var(--accent);
+    color: white;
+}
+
+.modal-tab-content {
+    display: none;
+}
+
+.modal-tab-content.active {
+    display: block;
+}
+
+/* Browse Header */
+.browse-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+#browse-path {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.btn-small {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+}
+
+/* Browse List */
+.browse-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.browse-item {
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.browse-item:hover {
+    background: var(--bg-hover);
+}
+
+.browse-item.scriv {
+    background: var(--bg-light);
+    border: 1px solid var(--accent);
+}
+
+.browse-item.scriv:hover {
+    background: var(--accent);
+    color: white;
+}
+
+.browse-item .icon {
+    font-size: 1.1rem;
+}
+
 .modal-content h2 {
     margin-bottom: 1rem;
 }

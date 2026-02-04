@@ -52,6 +52,14 @@ function setupEventListeners() {
     $("#btn-close-modal").addEventListener("click", () => $("#modal-projects").classList.remove("active"));
     $("#btn-open-custom").addEventListener("click", openCustomPath);
 
+    // Modal tabs
+    $$(".modal-tab").forEach(tab => {
+        tab.addEventListener("click", () => switchModalTab(tab.dataset.modalTab));
+    });
+
+    // Browse navigation
+    $("#btn-browse-up").addEventListener("click", browseUp);
+
     // Settings modal
     $("#btn-settings").addEventListener("click", openSettingsModal);
     $("#btn-close-settings").addEventListener("click", () => $("#modal-settings").classList.remove("active"));
@@ -430,4 +438,59 @@ function showToast(message) {
     document.body.appendChild(toast);
 
     setTimeout(() => toast.remove(), 3000);
+}
+
+// === File Browser ===
+let currentBrowsePath = null;
+
+function switchModalTab(tabName) {
+    $$(".modal-tab").forEach(t => t.classList.toggle("active", t.dataset.modalTab === tabName));
+    $$(".modal-tab-content").forEach(c => c.classList.toggle("active", c.id === `modal-tab-${tabName}`));
+
+    if (tabName === "browse" && !currentBrowsePath) {
+        browseTo(null); // Start at home
+    }
+}
+
+async function browseTo(path) {
+    try {
+        const url = path ? `/api/browse?path=${encodeURIComponent(path)}` : "/api/browse";
+        const data = await api(url);
+
+        currentBrowsePath = data.current;
+        $("#browse-path").textContent = data.current;
+        $("#btn-browse-up").disabled = !data.parent;
+
+        if (data.items.length === 0) {
+            $("#browse-list").innerHTML = "<p class='placeholder'>No folders found</p>";
+        } else {
+            $("#browse-list").innerHTML = data.items.map(item => `
+                <div class="browse-item ${item.is_scriv ? 'scriv' : ''}"
+                     data-path="${item.path}"
+                     data-is-scriv="${item.is_scriv}">
+                    <span class="icon">${item.is_scriv ? '📚' : '📁'}</span>
+                    <span class="name">${item.name}</span>
+                </div>
+            `).join("");
+
+            $$(".browse-item").forEach(item => {
+                item.addEventListener("click", () => {
+                    if (item.dataset.isScriv === "true") {
+                        openProject(item.dataset.path);
+                    } else {
+                        browseTo(item.dataset.path);
+                    }
+                });
+            });
+        }
+    } catch (e) {
+        $("#browse-list").innerHTML = `<p class="placeholder">Error: ${e.message}</p>`;
+    }
+}
+
+function browseUp() {
+    if (currentBrowsePath) {
+        const parent = currentBrowsePath.split("/").slice(0, -1).join("/") || "/";
+        browseTo(parent);
+    }
 }

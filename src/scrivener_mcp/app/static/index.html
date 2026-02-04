@@ -94,13 +94,35 @@
 
     <!-- Project Picker Modal -->
     <div id="modal-projects" class="modal">
-        <div class="modal-content">
+        <div class="modal-content modal-wide">
             <h2>Open Project</h2>
-            <div id="project-list" class="project-list">
-                <p>Searching for projects...</p>
+
+            <!-- Tabs for different browse modes -->
+            <div class="modal-tabs">
+                <button class="modal-tab active" data-modal-tab="recent">Recent Projects</button>
+                <button class="modal-tab" data-modal-tab="browse">Browse Files</button>
             </div>
+
+            <!-- Recent Projects Tab -->
+            <div id="modal-tab-recent" class="modal-tab-content active">
+                <div id="project-list" class="project-list">
+                    <p>Searching for projects...</p>
+                </div>
+            </div>
+
+            <!-- Browse Files Tab -->
+            <div id="modal-tab-browse" class="modal-tab-content">
+                <div class="browse-header">
+                    <button id="btn-browse-up" class="btn btn-small">↑ Up</button>
+                    <span id="browse-path">/</span>
+                </div>
+                <div id="browse-list" class="browse-list">
+                    <p>Loading...</p>
+                </div>
+            </div>
+
             <div class="modal-actions">
-                <input type="text" id="custom-path" placeholder="Or enter path to .scriv folder">
+                <input type="text" id="custom-path" placeholder="Or paste path to .scriv folder">
                 <button id="btn-open-custom" class="btn">Open</button>
                 <button id="btn-close-modal" class="btn">Cancel</button>
             </div>
