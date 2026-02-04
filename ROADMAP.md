@@ -1,6 +1,6 @@
 # Scrivener MCP Roadmap
 
-## Current Status: v0.1.0 Ready
+## Current Status: v0.1.0 - Ready for Release
 
 A read-only MCP server for Claude Desktop that gives AI access to your Scrivener projects.
 
@@ -10,17 +10,18 @@ A read-only MCP server for Claude Desktop that gives AI access to your Scrivener
 
 ## What It Does
 
-9 read-only tools for Claude Desktop:
+10 read-only tools for Claude Desktop:
 
 | Tool | Description |
 |------|-------------|
 | `find_projects` | Scan common locations for .scriv projects |
 | `open_project` | Load a project by path |
+| `scan_project` | Bird's eye view: titles, word counts, synopses, opening lines |
 | `list_binder` | Show binder structure |
-| `read_document` | Read document content |
-| `search_project` | Full-text search |
+| `read_document` | Read a single document |
+| `read_chapter` | Read a full chapter with all scenes |
+| `search_project` | Full-text search across all documents |
 | `get_word_counts` | Word count statistics |
-| `read_manuscript` | Read full manuscript in compile order |
 | `get_synopsis` | Read synopsis/index card |
 | `get_notes` | Read inspector notes |
 
@@ -32,7 +33,6 @@ A read-only MCP server for Claude Desktop that gives AI access to your Scrivener
 |----------|--------|--------|
 | macOS | Claude Desktop | Supported |
 | Windows | Claude Desktop | Supported |
-| Linux | Claude Desktop | Community build available |
 
 ---
 
@@ -55,7 +55,6 @@ These are ideas, not commitments:
 
 - PyPI package (`pip install scrivener-mcp`)
 - Additional metadata tools (labels, status)
-- Export to markdown
 
 ---
 
