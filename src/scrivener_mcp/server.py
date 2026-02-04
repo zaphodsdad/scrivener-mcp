@@ -500,6 +500,101 @@ Notes:
 {notes}"""
 
 
+@mcp.tool()
+def scan_project(folder_path: str | None = None) -> str:
+    """Scan the project and return a structured overview for analysis.
+
+    Returns chapter titles, word counts, synopses (if any), and opening lines.
+    This gives you enough context to understand the whole project without
+    loading every document into memory.
+
+    Use this to get a bird's eye view, then use read_document or
+    read_manuscript(chapter="...") to dive deeper into specific sections.
+
+    Args:
+        folder_path: Optional path to scan a specific folder (e.g., "Book One").
+                    If not provided, scans the entire Draft/Manuscript folder.
+
+    Returns:
+        Structured overview with chapter summaries, word counts, and opening lines.
+    """
+    project = get_project()
+
+    if folder_path:
+        root = project.find_by_path(folder_path)
+        if not root:
+            matches = project.find_by_title(folder_path, exact=False)
+            root = matches[0] if matches else None
+        if not root:
+            return f"Folder not found: {folder_path}"
+    else:
+        root = project.find_draft_folder()
+        if not root:
+            return "No Draft folder found in project."
+
+    output = [f"# Project Overview: {root.title}\n"]
+
+    # Get total stats
+    total_words = project.get_word_count(root, recursive=True)
+    total_docs = sum(1 for item in root.walk() if item.is_text)
+    output.append(f"**Total:** {total_words:,} words across {total_docs} documents\n")
+    output.append("---\n")
+
+    def scan_item(item, depth=0):
+        """Recursively scan an item and its children."""
+        lines = []
+        indent = "  " * depth
+
+        if item.is_folder:
+            folder_words = project.get_word_count(item, recursive=True)
+            lines.append(f"{indent}## 📁 {item.title} ({folder_words:,} words)\n")
+
+            # Check for folder synopsis
+            synopsis = project.read_synopsis(item)
+            if synopsis:
+                lines.append(f"{indent}**Synopsis:** {synopsis[:200]}{'...' if len(synopsis) > 200 else ''}\n")
+
+            # Process children
+            for child in item.children:
+                lines.extend(scan_item(child, depth + 1))
+
+        elif item.is_text and item.include_in_compile:
+            word_count = project.get_word_count(item)
+            lines.append(f"{indent}### 📄 {item.title} ({word_count:,} words)")
+
+            # Get synopsis if exists
+            synopsis = project.read_synopsis(item)
+            if synopsis:
+                lines.append(f"{indent}**Synopsis:** {synopsis[:150]}{'...' if len(synopsis) > 150 else ''}")
+
+            # Get opening line
+            try:
+                content = project.read_document(item)
+                if content:
+                    # Get first non-empty line, truncated
+                    first_lines = [l.strip() for l in content.split('\n') if l.strip()]
+                    if first_lines:
+                        opening = first_lines[0][:120]
+                        if len(first_lines[0]) > 120:
+                            opening += "..."
+                        lines.append(f"{indent}**Opens:** \"{opening}\"")
+            except Exception:
+                pass  # Skip if can't read
+
+            lines.append("")  # Blank line between docs
+
+        return lines
+
+    # Scan all children of root
+    for child in root.children:
+        output.extend(scan_item(child))
+
+    output.append("\n---")
+    output.append("💡 **Tip:** Use `read_manuscript(chapter=\"Chapter Name\")` to read a specific chapter in full.")
+
+    return "\n".join(output)
+
+
 def main():
     """Run the MCP server.
 
