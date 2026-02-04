@@ -379,51 +379,55 @@ def get_word_counts(folder_path: str | None = None) -> str:
 
 
 @mcp.tool()
-def read_manuscript(include_titles: bool = True, chapter: str | None = None) -> str:
-    """Read the full manuscript or a specific chapter.
+def read_chapter(chapter: str, include_titles: bool = True) -> str:
+    """Read a specific chapter or section of the manuscript.
 
-    Reads all documents marked "Include in Compile" from the Draft folder,
-    in binder order.
+    Reads all documents within the specified chapter/folder, in binder order.
+
+    ⚠️ For large projects, always read one chapter at a time to avoid timeouts.
+    Use scan_project first to see available chapters.
 
     Args:
+        chapter: Chapter name or path (e.g., "Chapter 01", "Book One/Chapter 05")
         include_titles: Whether to include document/folder titles as headings
-        chapter: Optional chapter name/path to read just that chapter
 
     Returns:
-        The compiled manuscript text.
+        The chapter text with all its scenes/documents.
     """
     project = get_project()
 
-    if chapter:
-        # Find the specific chapter
-        item = project.find_by_path(chapter)
-        if not item:
-            matches = project.find_by_title(chapter, exact=False)
-            item = matches[0] if matches else None
+    # Find the specific chapter
+    item = project.find_by_path(chapter)
+    if not item:
+        matches = project.find_by_title(chapter, exact=False)
+        item = matches[0] if matches else None
 
-        if not item:
-            return f"Chapter not found: {chapter}"
+    if not item:
+        return f"Chapter not found: {chapter}\n\n💡 Use scan_project or list_binder to see available chapters."
 
-        # Read just this chapter
-        parts = []
-        for child in item.walk():
-            if child == item:
+    # Read the chapter
+    parts = []
+    word_count = 0
+
+    for child in item.walk():
+        if child == item:
+            if include_titles:
+                parts.append(f"# {child.title}\n")
+            continue
+
+        if child.is_folder and include_titles:
+            parts.append(f"\n{'#' * min(child.depth - item.depth + 1, 4)} {child.title}\n")
+        elif child.is_text:
+            content = project.read_document(child)
+            if content:
+                word_count += len(content.split())
                 if include_titles:
-                    parts.append(f"# {child.title}\n")
-                continue
+                    parts.append(f"\n### {child.title}\n")
+                parts.append(content)
 
-            if child.is_folder and include_titles:
-                parts.append(f"\n{'#' * min(child.depth - item.depth + 1, 4)} {child.title}\n")
-            elif child.is_text:
-                content = project.read_document(child)
-                if content:
-                    if include_titles:
-                        parts.append(f"\n### {child.title}\n")
-                    parts.append(content)
+    parts.append(f"\n---\n📊 Chapter word count: {word_count:,}")
 
-        return "\n".join(parts)
-
-    return project.get_manuscript_text(include_titles=include_titles)
+    return "\n".join(parts)
 
 
 @mcp.tool()
