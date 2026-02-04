@@ -553,10 +553,14 @@ You can view and restore this snapshot in Scrivener's Inspector panel."""
 def write_document(identifier: str, content: str, auto_snapshot: bool = True) -> str:
     """Write or update the content of a document.
 
-    ⚠️ IMPORTANT: This modifies your Scrivener project!
+    ⚠️ IMPORTANT: Before calling this tool, you MUST:
+    1. Show the proposed content to the user in a markdown code block
+    2. Ask for their approval before writing
+    3. Only call this tool after the user confirms
+
+    This modifies the Scrivener project:
     - A snapshot is automatically created before changes (unless disabled)
     - Close Scrivener before using this tool
-    - Review changes in Scrivener after writing
 
     Args:
         identifier: Document title, path, or UUID
@@ -620,6 +624,9 @@ Open Scrivener to review the changes."""
 def set_synopsis(identifier: str, synopsis: str) -> str:
     """Set the synopsis (index card text) for a document.
 
+    ⚠️ Before calling this tool, show the proposed synopsis to the user
+    and ask for their approval before writing.
+
     The synopsis is the brief summary shown on Scrivener's corkboard/outliner.
     Great for scene summaries, chapter outlines, or quick notes.
 
@@ -667,6 +674,9 @@ New synopsis: {synopsis[:100] + '...' if len(synopsis) > 100 else synopsis}"""
 @mcp.tool()
 def set_notes(identifier: str, notes: str) -> str:
     """Set the document notes (inspector notes) for a document.
+
+    ⚠️ Before calling this tool, show the proposed notes to the user
+    and ask for their approval before writing.
 
     Document notes appear in Scrivener's Inspector panel.
     Use for research notes, reminders, or author comments.
@@ -719,7 +729,12 @@ def create_document(
 ) -> str:
     """Create a new document (scene) in the Scrivener project.
 
-    ⚠️ IMPORTANT: This modifies your Scrivener project structure!
+    ⚠️ IMPORTANT: Before calling this tool, you MUST:
+    1. Show the proposed title, content, and synopsis to the user in markdown
+    2. Ask for their approval before creating the document
+    3. Only call this tool after the user confirms
+
+    This modifies the Scrivener project structure:
     - Creates a new document in the binder
     - Close Scrivener before using this tool
 
