@@ -395,11 +395,15 @@ async def search(query: str):
 @app.get("/api/llm/config")
 async def get_llm_config():
     """Get current LLM configuration."""
+    # Consider configured if: has API key OR is local provider (ollama/custom)
+    is_configured = bool(_llm_config["api_key"]) or _llm_config["provider"] in ("ollama", "custom")
+
     return {
         "provider": _llm_config["provider"],
         "model": _llm_config["model"],
         "base_url": _llm_config["base_url"],
         "has_api_key": bool(_llm_config["api_key"]),
+        "is_configured": is_configured,
     }
 
 

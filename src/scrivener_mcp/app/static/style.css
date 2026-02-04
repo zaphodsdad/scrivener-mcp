@@ -312,6 +312,28 @@ body {
     margin: 0.5rem 0;
 }
 
+.chat-message.thinking {
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Spinner */
+.spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--text-muted);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 .chat-input-container {
     padding: 0.75rem;
     border-top: 1px solid var(--border);

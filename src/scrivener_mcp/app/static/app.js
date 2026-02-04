@@ -323,7 +323,7 @@ function switchTab(tabName) {
 
 // === AI Chat ===
 function updateLLMStatus(config) {
-    if (config.has_api_key) {
+    if (config.is_configured) {
         $("#llm-model").textContent = config.model.split("/").pop();
         clearSystemMessage();
     } else {
@@ -347,11 +347,23 @@ function addChatMessage(role, content) {
 
 async function sendChatMessage() {
     const input = $("#chat-input");
+    const sendBtn = $("#btn-send-chat");
     const message = input.value.trim();
     if (!message) return;
 
     input.value = "";
+    input.disabled = true;
+    sendBtn.disabled = true;
+    sendBtn.textContent = "...";
+
     addChatMessage("user", message);
+
+    // Add thinking indicator
+    const thinkingDiv = document.createElement("div");
+    thinkingDiv.className = "chat-message assistant thinking";
+    thinkingDiv.innerHTML = '<span class="spinner"></span> Thinking...';
+    $("#chat-messages").appendChild(thinkingDiv);
+    $("#chat-messages").scrollTop = $("#chat-messages").scrollHeight;
 
     // Include current document as context
     let context = "";
@@ -364,9 +376,16 @@ async function sendChatMessage() {
             method: "POST",
             body: JSON.stringify({ message, context }),
         });
+        thinkingDiv.remove();
         addChatMessage("assistant", data.response);
     } catch (e) {
+        thinkingDiv.remove();
         addChatMessage("system", `Error: ${e.message}`);
+    } finally {
+        input.disabled = false;
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Send";
+        input.focus();
     }
 }
 
