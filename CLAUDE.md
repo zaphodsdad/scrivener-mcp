@@ -68,7 +68,9 @@ MyNovel.scriv/
 </ScrivenerProject>
 ```
 
-## Implemented MCP Tools (9 total)
+## Implemented MCP Tools (14 total)
+
+### Read Tools (9)
 
 | Tool | Description |
 |------|-------------|
@@ -82,14 +84,24 @@ MyNovel.scriv/
 | `get_synopsis` | Read the synopsis (index card text) for a document |
 | `get_notes` | Read the inspector notes for a document |
 
-## Planned Tools (Not Yet Implemented)
+### Write Tools (5)
 
 | Tool | Description |
 |------|-------------|
-| `write_document` | Update a document (auto-snapshot first) |
-| `create_snapshot` | Manual snapshot before changes |
-| `set_synopsis` | Update a scene's synopsis |
-| `get_characters` | Find character sheets in Research folder |
+| `create_snapshot` | Create a backup snapshot before making changes |
+| `write_document` | Update document content (auto-snapshot first) |
+| `set_synopsis` | Update a document's synopsis (index card text) |
+| `set_notes` | Update a document's inspector notes |
+| `create_document` | Create a new document in a folder |
+
+## Planned Tools (See ROADMAP.md)
+
+| Tool | Description |
+|------|-------------|
+| `check_grammar` | LanguageTool integration for grammar/style checking |
+| `get_characters` | Extract character sheets from Research folder |
+| `analyze_pov` | Detect POV shifts and inconsistencies |
+| `export_markdown` | Export project to markdown files |
 
 ## Project Structure
 
@@ -111,9 +123,9 @@ scrivener-mcp/
 
 ## Safety Measures
 
-- **Lock detection:** Checks for `user.lock` and warns if project is open in Scrivener
-- **Read-only (for now):** Write operations not yet implemented
-- **Future:** Auto-snapshot before every write, RTF preservation
+- **Lock detection:** Checks for `user.lock` and refuses writes if project is open in Scrivener
+- **Auto-snapshot:** Creates backup snapshot before every write operation
+- **RTF preservation:** Converts plain text to proper RTF format for Scrivener compatibility
 
 ## Dependencies
 
@@ -124,7 +136,7 @@ striprtf            # RTF to text conversion
 
 ## Status
 
-**MVP Complete** - 9 read tools working. No write operations yet.
+**Phase 1 Complete** - 14 tools working (9 read + 5 write). See ROADMAP.md for upcoming features.
 
 ## Quick Start (Mac)
 
@@ -186,36 +198,38 @@ Then restart Claude Desktop. You can ask things like:
 - "What's my word count by chapter?"
 - "Show me the synopsis for Chapter 3"
 
-## ChatGPT Configuration
+## LibreChat Configuration
 
-ChatGPT requires HTTP transport and a publicly accessible URL.
+LibreChat supports MCP via SSE transport. Run the server in HTTP mode:
 
 ### Step 1: Start HTTP server
 ```bash
 source .venv/bin/activate
 export SCRIVENER_PROJECT="/path/to/Your Novel.scriv"
-scrivener-mcp --http --port 8000
+python -c "
+import uvicorn
+from scrivener_mcp.server import mcp
+app = mcp.sse_app()
+uvicorn.run(app, host='0.0.0.0', port=8000)
+"
 ```
 
-### Step 2: Expose via tunnel
+### Step 2: Configure LibreChat
+Add to `librechat.yaml`:
+```yaml
+mcpSettings:
+  allowedDomains:
+    - 'host.docker.internal'  # For Docker
+    - 'localhost'
 
-**Quick tunnel (no account needed):**
-```bash
-cloudflared tunnel --url http://localhost:8000
-# Gives you: https://random-words.trycloudflare.com
+mcpServers:
+  scrivener:
+    type: sse
+    url: http://host.docker.internal:8000/sse  # Docker
+    # url: http://localhost:8000/sse           # Native install
 ```
 
-**Persistent tunnel (with your domain):**
-```bash
-cloudflared tunnel create scrivener
-cloudflared tunnel route dns scrivener mcp.yourdomain.com
-cloudflared tunnel run scrivener
-```
-
-### Step 3: Configure ChatGPT
-1. Open ChatGPT Desktop (Pro/Plus required)
-2. Settings → Connectors → Advanced → Developer mode
-3. Add MCP server: `https://your-tunnel-url.com/mcp`
+> **Note:** ChatGPT is *not* an MCP client and does not support MCP servers.
 
 ---
 
