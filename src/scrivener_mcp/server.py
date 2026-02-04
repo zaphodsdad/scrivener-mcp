@@ -704,6 +704,86 @@ Notes set to: {notes[:200] + '...' if len(notes) > 200 else notes}"""
         return f"❌ Unexpected error: {e}"
 
 
+@mcp.tool()
+def create_document(
+    title: str,
+    parent_path: str,
+    content: str = "",
+    synopsis: str = "",
+    include_in_compile: bool = True,
+) -> str:
+    """Create a new document (scene) in the Scrivener project.
+
+    ⚠️ IMPORTANT: This modifies your Scrivener project structure!
+    - Creates a new document in the binder
+    - Close Scrivener before using this tool
+
+    Args:
+        title: Title for the new document (e.g., "Scene 3", "Chapter 5")
+        parent_path: Path or title of the parent folder (e.g., "Book One/Chapter 01")
+        content: Initial content for the document (optional)
+        synopsis: Initial synopsis/index card text (optional)
+        include_in_compile: Include in manuscript compile (default: True)
+
+    Returns:
+        Confirmation with the new document's path.
+    """
+    project = get_project()
+
+    if project.is_locked:
+        return """❌ Project is open in Scrivener!
+
+Close Scrivener before creating documents to avoid conflicts."""
+
+    # Find the parent folder
+    parent = project.find_by_path(parent_path)
+    if not parent:
+        matches = project.find_by_title(parent_path, exact=False)
+        # Filter to folders only
+        matches = [m for m in matches if m.is_folder]
+        if len(matches) == 1:
+            parent = matches[0]
+        elif len(matches) > 1:
+            paths = [f"  - {m.path}" for m in matches[:10]]
+            return f"Multiple folders match '{parent_path}':\n" + "\n".join(paths) + "\n\nPlease use the full path."
+
+    if not parent:
+        return f"Parent folder not found: {parent_path}"
+
+    if not parent.is_folder:
+        return f"Parent must be a folder, but '{parent.title}' is a document."
+
+    try:
+        new_item = project.create_document(
+            title=title,
+            parent=parent,
+            content=content,
+            synopsis=synopsis,
+            include_in_compile=include_in_compile,
+        )
+
+        word_count = len(content.split()) if content else 0
+        content_note = f"Initial content: {word_count:,} words" if content else "No initial content"
+        synopsis_note = f"Synopsis: {synopsis[:50]}..." if len(synopsis) > 50 else f"Synopsis: {synopsis}" if synopsis else "No synopsis"
+
+        return f"""✅ Document created: {new_item.title}
+Path: {new_item.path}
+UUID: {new_item.uuid}
+Include in Compile: {"Yes" if include_in_compile else "No"}
+
+{content_note}
+{synopsis_note}
+
+Open Scrivener to see the new document in the binder."""
+
+    except RuntimeError as e:
+        return f"❌ Error: {e}"
+    except ValueError as e:
+        return f"❌ Invalid input: {e}"
+    except Exception as e:
+        return f"❌ Unexpected error creating document: {e}"
+
+
 def main():
     """Run the MCP server.
 

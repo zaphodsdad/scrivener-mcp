@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import re
 import shutil
+import uuid
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
 from typing import Iterator
 
-from .binder import BinderItem, parse_binder
+from .binder import BinderItem, parse_binder, parse_binder_item
 from .rtf import count_words, read_rtf, text_to_rtf
 
 
@@ -314,3 +316,147 @@ class ScrivenerProject:
         # Write the notes
         rtf_content = text_to_rtf(notes)
         notes_path.write_text(rtf_content, encoding="utf-8")
+
+    def create_document(
+        self,
+        title: str,
+        parent: BinderItem,
+        content: str = "",
+        synopsis: str = "",
+        include_in_compile: bool = True,
+        position: int | None = None,
+    ) -> BinderItem:
+        """Create a new document in the binder.
+
+        Args:
+            title: Title for the new document
+            parent: Parent folder to create the document in
+            content: Initial content (optional)
+            synopsis: Initial synopsis (optional)
+            include_in_compile: Whether to include in compile (default: True)
+            position: Position among siblings (None = append at end)
+
+        Returns:
+            The newly created BinderItem
+        """
+        if self.is_locked:
+            raise RuntimeError(
+                "Project is open in Scrivener. Close Scrivener before writing."
+            )
+
+        if not parent.is_folder:
+            raise ValueError(f"Parent must be a folder: {parent.title}")
+
+        # Generate a new UUID
+        new_uuid = str(uuid.uuid4()).upper()
+
+        # Create timestamp in Scrivener's format
+        now = datetime.now()
+        timestamp = now.strftime("%Y-%m-%d %H:%M:%S -0600")
+
+        # Create the data directory
+        data_dir = self.path / "Files" / "Data" / new_uuid
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write initial content if provided
+        if content:
+            content_path = data_dir / "content.rtf"
+            content_path.write_text(text_to_rtf(content), encoding="utf-8")
+
+        # Write synopsis if provided
+        if synopsis:
+            synopsis_path = data_dir / "synopsis.txt"
+            synopsis_path.write_text(synopsis, encoding="utf-8")
+
+        # Now modify the .scrivx XML
+        tree = ET.parse(self._scrivx_path)
+        root = tree.getroot()
+
+        # Find the parent element in the XML
+        parent_elem = self._find_binder_item_element(root, parent.uuid)
+        if parent_elem is None:
+            raise ValueError(f"Could not find parent in XML: {parent.uuid}")
+
+        # Get or create Children element
+        children_elem = parent_elem.find("Children")
+        if children_elem is None:
+            children_elem = ET.SubElement(parent_elem, "Children")
+
+        # Create the new BinderItem element
+        new_elem = ET.Element("BinderItem")
+        new_elem.set("UUID", new_uuid)
+        new_elem.set("Type", "Text")
+        new_elem.set("Created", timestamp)
+        new_elem.set("Modified", timestamp)
+
+        # Add Title
+        title_elem = ET.SubElement(new_elem, "Title")
+        title_elem.text = title
+
+        # Add MetaData
+        metadata_elem = ET.SubElement(new_elem, "MetaData")
+        compile_elem = ET.SubElement(metadata_elem, "IncludeInCompile")
+        compile_elem.text = "Yes" if include_in_compile else "No"
+
+        # Add TextSettings
+        text_settings = ET.SubElement(new_elem, "TextSettings")
+        text_selection = ET.SubElement(text_settings, "TextSelection")
+        text_selection.text = "0,0"
+
+        # Insert at position or append
+        if position is not None and position < len(children_elem):
+            children_elem.insert(position, new_elem)
+        else:
+            children_elem.append(new_elem)
+
+        # Update the project's Modified timestamp
+        root.set("Modified", timestamp)
+        root.set("ModID", str(uuid.uuid4()).upper())
+
+        # Write the XML back (preserve formatting as much as possible)
+        self._write_scrivx(tree)
+
+        # Reload the binder to get the new item
+        self._binder_items = parse_binder(self._scrivx_path)
+
+        # Return the new item
+        new_item = self.find_by_uuid(new_uuid)
+        return new_item
+
+    def _find_binder_item_element(self, root: ET.Element, target_uuid: str) -> ET.Element | None:
+        """Find a BinderItem element by UUID in the XML tree."""
+        for elem in root.iter("BinderItem"):
+            if elem.get("UUID") == target_uuid:
+                return elem
+        return None
+
+    def _write_scrivx(self, tree: ET.ElementTree) -> None:
+        """Write the .scrivx XML file with proper formatting."""
+        # Add XML declaration and write
+        root = tree.getroot()
+
+        # Indent for readability
+        self._indent_xml(root)
+
+        # Write with XML declaration
+        tree.write(
+            self._scrivx_path,
+            encoding="UTF-8",
+            xml_declaration=True,
+        )
+
+    def _indent_xml(self, elem: ET.Element, level: int = 0) -> None:
+        """Add indentation to XML elements for readability."""
+        indent = "\n" + "    " * level
+        if len(elem):
+            if not elem.text or not elem.text.strip():
+                elem.text = indent + "    "
+            if not elem.tail or not elem.tail.strip():
+                elem.tail = indent
+            for child in elem:
+                self._indent_xml(child, level + 1)
+            if not child.tail or not child.tail.strip():
+                child.tail = indent
+        else:
+            if level and (not elem.tail or not elem.tail.strip()):
+                elem.tail = indent
