@@ -131,24 +131,43 @@
 
     <!-- Settings Modal -->
     <div id="modal-settings" class="modal">
-        <div class="modal-content">
-            <h2>Settings</h2>
+        <div class="modal-content modal-wide">
+            <h2>LLM Settings</h2>
             <div class="settings-form">
                 <label>
                     Provider:
                     <select id="setting-provider">
-                        <option value="openrouter">OpenRouter</option>
+                        <option value="openrouter">OpenRouter (Multiple AIs)</option>
                         <option value="anthropic">Anthropic (Direct)</option>
                         <option value="openai">OpenAI (Direct)</option>
+                        <option value="ollama">Ollama (Local)</option>
+                        <option value="custom">Custom API</option>
                     </select>
                 </label>
-                <label>
-                    Model:
-                    <input type="text" id="setting-model" placeholder="e.g., anthropic/claude-sonnet-4-20250514">
-                </label>
+
                 <label>
                     API Key:
                     <input type="password" id="setting-api-key" placeholder="Enter API key">
+                    <small id="api-key-hint" class="hint">Required for cloud providers</small>
+                </label>
+
+                <label id="base-url-group" style="display: none;">
+                    Base URL:
+                    <input type="text" id="setting-base-url" placeholder="http://localhost:11434/v1">
+                    <small class="hint">For Ollama or custom endpoints</small>
+                </label>
+
+                <label>
+                    Model:
+                    <select id="setting-model-select">
+                        <option value="">-- Select a model --</option>
+                    </select>
+                </label>
+
+                <label>
+                    Or enter model manually:
+                    <input type="text" id="setting-model-custom" placeholder="e.g., anthropic/claude-sonnet-4-20250514">
+                    <small class="hint">For models not in the list</small>
                 </label>
             </div>
             <div class="modal-actions">

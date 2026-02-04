@@ -570,6 +570,17 @@ body {
     font-size: 0.9rem;
 }
 
+.settings-form small.hint {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+}
+
+.settings-form select option {
+    background: var(--bg-medium);
+    color: var(--text-primary);
+}
+
 /* === Scrollbar === */
 ::-webkit-scrollbar {
     width: 8px;

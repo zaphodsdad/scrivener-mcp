@@ -386,24 +386,127 @@ function sendSelectionToAI() {
 }
 
 // === Settings ===
+const MODEL_PRESETS = {
+    openrouter: [
+        { value: "anthropic/claude-sonnet-4-20250514", label: "Claude Sonnet 4" },
+        { value: "anthropic/claude-opus-4-20250514", label: "Claude Opus 4" },
+        { value: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet" },
+        { value: "anthropic/claude-3-haiku", label: "Claude 3 Haiku" },
+        { value: "openai/gpt-4o", label: "GPT-4o" },
+        { value: "openai/gpt-4o-mini", label: "GPT-4o Mini" },
+        { value: "openai/o1", label: "OpenAI o1" },
+        { value: "google/gemini-pro-1.5", label: "Gemini Pro 1.5" },
+        { value: "meta-llama/llama-3.1-70b-instruct", label: "Llama 3.1 70B" },
+        { value: "deepseek/deepseek-chat", label: "DeepSeek Chat" },
+    ],
+    anthropic: [
+        { value: "claude-sonnet-4-20250514", label: "Claude Sonnet 4" },
+        { value: "claude-opus-4-20250514", label: "Claude Opus 4" },
+        { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
+        { value: "claude-3-haiku-20240307", label: "Claude 3 Haiku" },
+    ],
+    openai: [
+        { value: "gpt-4o", label: "GPT-4o" },
+        { value: "gpt-4o-mini", label: "GPT-4o Mini" },
+        { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
+        { value: "o1", label: "o1" },
+        { value: "o1-mini", label: "o1 Mini" },
+    ],
+    ollama: [
+        { value: "llama3.1:8b", label: "Llama 3.1 8B" },
+        { value: "llama3.1:70b", label: "Llama 3.1 70B" },
+        { value: "qwen2.5-coder:32b", label: "Qwen 2.5 Coder 32B" },
+        { value: "deepseek-r1:14b", label: "DeepSeek R1 14B" },
+        { value: "mistral:latest", label: "Mistral" },
+        { value: "codellama:latest", label: "Code Llama" },
+    ],
+    custom: [],
+};
+
 function openSettingsModal() {
     $("#modal-settings").classList.add("active");
 
     // Load current config
     api("/api/llm/config").then(config => {
         $("#setting-provider").value = config.provider;
-        $("#setting-model").value = config.model;
+        updateProviderUI(config.provider);
+
+        // Set model in dropdown or custom field
+        const select = $("#setting-model-select");
+        const customInput = $("#setting-model-custom");
+
+        const optionExists = Array.from(select.options).some(opt => opt.value === config.model);
+        if (optionExists) {
+            select.value = config.model;
+            customInput.value = "";
+        } else {
+            select.value = "";
+            customInput.value = config.model;
+        }
+
+        if (config.base_url) {
+            $("#setting-base-url").value = config.base_url;
+        }
+    });
+
+    // Provider change handler
+    $("#setting-provider").onchange = (e) => updateProviderUI(e.target.value);
+}
+
+function updateProviderUI(provider) {
+    const baseUrlGroup = $("#base-url-group");
+    const apiKeyHint = $("#api-key-hint");
+    const modelSelect = $("#setting-model-select");
+
+    // Show/hide base URL field
+    if (provider === "ollama" || provider === "custom") {
+        baseUrlGroup.style.display = "flex";
+        if (provider === "ollama") {
+            $("#setting-base-url").placeholder = "http://localhost:11434/v1";
+        } else {
+            $("#setting-base-url").placeholder = "https://your-api.com/v1";
+        }
+    } else {
+        baseUrlGroup.style.display = "none";
+    }
+
+    // Update API key hint
+    if (provider === "ollama") {
+        apiKeyHint.textContent = "Usually not required for local Ollama";
+    } else {
+        apiKeyHint.textContent = "Required for cloud providers";
+    }
+
+    // Populate model dropdown
+    modelSelect.innerHTML = '<option value="">-- Select a model --</option>';
+    const models = MODEL_PRESETS[provider] || [];
+    models.forEach(m => {
+        const opt = document.createElement("option");
+        opt.value = m.value;
+        opt.textContent = m.label;
+        modelSelect.appendChild(opt);
     });
 }
 
 async function saveSettings() {
+    const provider = $("#setting-provider").value;
+    const modelSelect = $("#setting-model-select").value;
+    const modelCustom = $("#setting-model-custom").value.trim();
+    const model = modelCustom || modelSelect;
+
+    if (!model) {
+        alert("Please select or enter a model");
+        return;
+    }
+
     try {
         await api("/api/llm/config", {
             method: "POST",
             body: JSON.stringify({
-                provider: $("#setting-provider").value,
-                model: $("#setting-model").value,
+                provider: provider,
+                model: model,
                 api_key: $("#setting-api-key").value,
+                base_url: $("#setting-base-url").value.trim() || undefined,
             }),
         });
         const config = await api("/api/llm/config");

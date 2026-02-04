@@ -398,6 +398,7 @@ async def get_llm_config():
     return {
         "provider": _llm_config["provider"],
         "model": _llm_config["model"],
+        "base_url": _llm_config["base_url"],
         "has_api_key": bool(_llm_config["api_key"]),
     }
 
@@ -411,15 +412,17 @@ async def set_llm_config(config: LLMConfig):
     if config.api_key:
         _llm_config["api_key"] = config.api_key
 
-    # Set base URL based on provider
-    if config.provider == "openrouter":
+    # Set base URL based on provider (or use custom)
+    if config.base_url:
+        _llm_config["base_url"] = config.base_url
+    elif config.provider == "openrouter":
         _llm_config["base_url"] = "https://openrouter.ai/api/v1"
     elif config.provider == "anthropic":
         _llm_config["base_url"] = "https://api.anthropic.com/v1"
     elif config.provider == "openai":
         _llm_config["base_url"] = "https://api.openai.com/v1"
-    elif config.base_url:
-        _llm_config["base_url"] = config.base_url
+    elif config.provider == "ollama":
+        _llm_config["base_url"] = "http://localhost:11434/v1"
 
     return {"success": True}
 
