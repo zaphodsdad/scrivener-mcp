@@ -1,120 +1,153 @@
 # Scrivener MCP Roadmap
 
-## Current Status: MVP Complete (Read-Only)
+## Current Status: Phase 1 Complete
 
-9 tools implemented for reading Scrivener projects.
+**Two interfaces to Scrivener projects:**
+
+1. **MCP Server** - For AI clients with tool-calling (Claude Desktop, LibreChat + capable models)
+2. **Web App** - For any LLM via API (OpenRouter, Anthropic, OpenAI, etc.) - *In Development*
 
 ---
 
-## Phase 1: Write Operations (Priority: High)
+## Architecture
 
-Enable AI to modify Scrivener projects safely.
+```
+┌─────────────────────────────────────────────────────────┐
+│                   scrivener/ (core library)             │
+│         project.py, binder.py, rtf.py                   │
+│     The actual Scrivener reading/writing logic          │
+└───────────────────┬─────────────────────┬───────────────┘
+                    │                     │
+        ┌───────────▼───────┐   ┌─────────▼──────────┐
+        │   MCP Server      │   │   Web App          │
+        │   (server.py)     │   │   (app/)           │
+        │                   │   │                    │
+        │ Protocol-based    │   │ Browser-based UI   │
+        │ Requires tool-    │   │ Works with ANY LLM │
+        │ capable models    │   │ No tool-calling    │
+        │                   │   │ required           │
+        └───────────────────┘   └────────────────────┘
+```
 
+**Why two interfaces?**
+
+MCP requires the LLM to understand tool-calling. Testing shows only certain models work:
+- ✅ Claude Sonnet 4, GPT-5.1 (via OpenRouter)
+- ❌ Claude 3.7, Opus 3, local LLMs (Ollama)
+
+The Web App bypasses this limitation - the app handles all Scrivener operations directly, and the LLM just generates/analyzes text.
+
+---
+
+## MCP Server (Complete)
+
+14 tools for Claude Desktop and tool-capable models.
+
+### Read Tools (9)
 | Tool | Description | Status |
 |------|-------------|--------|
-| `create_snapshot` | Manual backup before changes | Planned |
-| `write_document` | Update scene text (auto-snapshot) | Planned |
-| `set_synopsis` | Update index card summary | Planned |
-| `set_notes` | Update inspector notes | Planned |
-| `create_document` | Add new scene/chapter to binder | Planned |
-| `move_document` | Reorganize binder structure | Planned |
-| `delete_document` | Remove document (with confirmation) | Planned |
+| `find_projects` | Scan common locations for .scriv projects | ✅ Done |
+| `open_project` | Load a project by path | ✅ Done |
+| `list_binder` | Show binder structure | ✅ Done |
+| `read_document` | Read document content | ✅ Done |
+| `search_project` | Full-text search | ✅ Done |
+| `get_word_counts` | Word count statistics | ✅ Done |
+| `read_manuscript` | Read full manuscript in compile order | ✅ Done |
+| `get_synopsis` | Read synopsis/index card | ✅ Done |
+| `get_notes` | Read inspector notes | ✅ Done |
 
-**Safety measures:**
-- Auto-snapshot before any write operation
-- Lock file detection (warn if Scrivener is open)
-- RTF format preservation where possible
-
----
-
-## Phase 2: Analysis Tools (Priority: High)
-
-Help writers identify issues in their manuscript.
-
+### Write Tools (5)
 | Tool | Description | Status |
 |------|-------------|--------|
-| `check_grammar` | LanguageTool integration | Planned |
-| `find_adverbs` | Flag -ly words, weak verbs, passive voice | Planned |
-| `analyze_pov` | Detect POV shifts within scenes | Planned |
-| `consistency_check` | Compare character descriptions across chapters | Planned |
-| `timeline_extract` | Pull dates/times, flag contradictions | Planned |
-| `pacing_analysis` | Scene length, action vs dialogue ratio | Planned |
+| `create_snapshot` | Backup before changes | ✅ Done |
+| `write_document` | Update document content | ✅ Done |
+| `set_synopsis` | Update synopsis | ✅ Done |
+| `set_notes` | Update inspector notes | ✅ Done |
+| `create_document` | Create new document in binder | ✅ Done |
 
-**Dependencies:**
-- LanguageTool (free, self-hostable Java app or API)
-
----
-
-## Phase 3: Character & World Building (Priority: Medium)
-
-Automated extraction and management of story elements.
-
-| Tool | Description | Status |
-|------|-------------|--------|
-| `extract_characters` | Scan manuscript, build character list | Planned |
-| `get_character_profile` | Read from Research folder | Planned |
-| `create_character_sheet` | Generate profile from scene mentions | Planned |
-| `update_character_sheet` | Add new info to existing profile | Planned |
-| `extract_locations` | Find all places mentioned | Planned |
-| `relationship_map` | Who interacts with whom, where | Planned |
-| `extract_timeline` | Build chronological event list | Planned |
+### Safety Features
+- ✅ Lock detection (refuses writes if Scrivener is open)
+- ✅ Auto-snapshot before every write
+- ✅ User approval prompts in tool descriptions
+- ✅ RTF format preservation
 
 ---
 
-## Phase 4: Export & Integration (Priority: Medium)
+## Web App (In Development)
 
-Connect Scrivener to other tools and formats.
+Browser-based interface that works with any LLM.
 
-| Tool | Description | Status |
-|------|-------------|--------|
-| `export_markdown` | Scene/chapter as clean markdown | Planned |
-| `export_outline` | Binder as markdown outline | Planned |
-| `diff_versions` | Compare current to snapshot | Planned |
-| `compile_manuscript` | Full export with format options | Planned |
-| `sync_obsidian` | Two-way sync with Obsidian vault | Planned |
+### MVP Features
+| Feature | Description | Status |
+|---------|-------------|--------|
+| Project browser | Find and open .scriv projects | Planned |
+| Binder sidebar | Navigate folders and documents | Planned |
+| Document viewer | Read document content | Planned |
+| Document editor | Edit with auto-snapshot | Planned |
+| AI chat panel | Send context to LLM, get responses | Planned |
+| LLM configuration | API key, model selection | Planned |
+
+### How It Works
+
+1. **User navigates** - Click folders/documents in binder sidebar
+2. **App fetches** - Calls `ScrivenerProject` methods directly
+3. **AI assists** - Selected text + user prompt sent to LLM API
+4. **User approves** - Review AI suggestions before applying
+5. **App writes** - Changes saved to Scrivener project
+
+The LLM never needs to "call tools" - it just receives text and generates text.
+
+### Supported LLM Providers
+- OpenRouter (access to Claude, GPT, Llama, etc.)
+- Anthropic API (direct)
+- OpenAI API (direct)
+- Any OpenAI-compatible API
 
 ---
 
-## Phase 5: Advanced Features (Priority: Low)
+## Future Phases
 
-Nice-to-have features for power users.
+### Phase 2: Analysis Tools
+| Tool | Description |
+|------|-------------|
+| `check_grammar` | LanguageTool integration |
+| `analyze_pov` | Detect POV shifts |
+| `consistency_check` | Character description consistency |
+| `pacing_analysis` | Scene length, action vs dialogue |
 
-| Tool | Description | Status |
-|------|-------------|--------|
-| `batch_operations` | Apply changes to multiple documents | Planned |
-| `template_apply` | Apply scene template to new documents | Planned |
-| `word_frequency` | Analyze word/phrase repetition | Planned |
-| `reading_level` | Flesch-Kincaid and other metrics | Planned |
-| `dialogue_extraction` | Pull all dialogue for a character | Planned |
+### Phase 3: Character & World Building
+| Tool | Description |
+|------|-------------|
+| `extract_characters` | Build character list from manuscript |
+| `get_character_profile` | Read from Research folder |
+| `relationship_map` | Who interacts with whom |
 
----
-
-## External Integrations
-
-| Integration | Purpose | Status |
-|-------------|---------|--------|
-| **LanguageTool** | Grammar/style checking (free) | Planned |
-| **ProWritingAid API** | Advanced style analysis | Considering |
-| **Obsidian** | World-building notes sync | Considering |
-| **Airtable/Notion** | Character/plot databases | Considering |
+### Phase 4: Export & Integration
+| Tool | Description |
+|------|-------------|
+| `export_markdown` | Clean markdown export |
+| `export_outline` | Binder as outline |
+| `sync_obsidian` | Two-way Obsidian sync |
 
 ---
 
 ## Platform Support
 
+### MCP Server
 | Platform | Client | Status |
 |----------|--------|--------|
-| macOS | Claude Desktop | Supported |
-| macOS | LibreChat (Docker) | Supported |
-| Windows | Claude Desktop | Supported |
-| Windows | LibreChat (Docker/WSL) | Supported |
-| Linux | LibreChat | Supported |
-| Linux | Claude Desktop | Community build available |
+| macOS | Claude Desktop | ✅ Supported |
+| macOS | LibreChat | ✅ Supported (Sonnet 4, GPT-5.1) |
+| Windows | Claude Desktop | ✅ Supported |
+| Linux | LibreChat | ✅ Supported |
+
+### Web App
+| Platform | Status |
+|----------|--------|
+| Any browser | Planned |
 
 ---
 
 ## Contributing
-
-Want to help? Pick an item from Phase 1 or 2 and submit a PR!
 
 See [CLAUDE.md](CLAUDE.md) for technical details on the codebase.

@@ -11,6 +11,9 @@ requires-python = ">=3.10"
 dependencies = [
     "mcp>=1.0.0",
     "striprtf>=0.0.26",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.20.0",
+    "httpx>=0.24.0",
 ]
 
 [project.optional-dependencies]
@@ -20,6 +23,7 @@ dev = [
 
 [project.scripts]
 scrivener-mcp = "scrivener_mcp.server:main"
+scrivener-app = "scrivener_mcp.app.main:run_app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/scrivener_mcp"]
