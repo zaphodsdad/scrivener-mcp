@@ -500,6 +500,210 @@ Notes:
 {notes}"""
 
 
+# ========== Write Operations ==========
+
+
+@mcp.tool()
+def create_snapshot(identifier: str, title: str | None = None) -> str:
+    """Create a snapshot (backup) of a document.
+
+    Snapshots preserve the current state before making changes.
+    Scrivener can view and restore snapshots from the Inspector panel.
+
+    Args:
+        identifier: Document title, path, or UUID
+        title: Optional descriptive title for the snapshot
+
+    Returns:
+        Confirmation with snapshot filename.
+    """
+    project = get_project()
+
+    # Find the document
+    item = project.find_by_uuid(identifier)
+    if not item:
+        item = project.find_by_path(identifier)
+    if not item:
+        matches = project.find_by_title(identifier, exact=False)
+        item = matches[0] if matches else None
+
+    if not item:
+        return f"Document not found: {identifier}"
+
+    if not item.is_text:
+        return f"Cannot snapshot non-text item: {item.title}"
+
+    try:
+        snapshot_name = project.create_snapshot(item, title)
+        return f"""✅ Snapshot created for: {item.title}
+Path: {item.path}
+Snapshot: {snapshot_name}
+
+You can view and restore this snapshot in Scrivener's Inspector panel."""
+    except Exception as e:
+        return f"❌ Error creating snapshot: {e}"
+
+
+@mcp.tool()
+def write_document(identifier: str, content: str, auto_snapshot: bool = True) -> str:
+    """Write or update the content of a document.
+
+    ⚠️ IMPORTANT: This modifies your Scrivener project!
+    - A snapshot is automatically created before changes (unless disabled)
+    - Close Scrivener before using this tool
+    - Review changes in Scrivener after writing
+
+    Args:
+        identifier: Document title, path, or UUID
+        content: The new plain text content for the document
+        auto_snapshot: Create a snapshot before writing (default: True, recommended)
+
+    Returns:
+        Confirmation of the write operation.
+    """
+    project = get_project()
+
+    # Check lock first
+    if project.is_locked:
+        return """❌ Project is open in Scrivener!
+
+Close Scrivener before writing to avoid conflicts.
+Your changes would be lost when Scrivener saves."""
+
+    # Find the document
+    item = project.find_by_uuid(identifier)
+    if not item:
+        item = project.find_by_path(identifier)
+    if not item:
+        matches = project.find_by_title(identifier, exact=True)
+        if len(matches) == 1:
+            item = matches[0]
+        elif len(matches) > 1:
+            paths = [f"  - {m.path}" for m in matches]
+            return f"Multiple documents found with title '{identifier}':\n" + "\n".join(paths) + "\n\nPlease use the full path to specify which one."
+
+    if not item:
+        return f"Document not found: {identifier}"
+
+    if not item.is_text:
+        return f"Cannot write to non-text item: {item.title}"
+
+    try:
+        # Get word count for comparison
+        old_content = project.read_document(item)
+        old_words = len(old_content.split()) if old_content else 0
+        new_words = len(content.split())
+
+        project.write_document(item, content, create_snapshot=auto_snapshot)
+
+        snapshot_note = "A snapshot was created before writing." if auto_snapshot else "No snapshot created (auto_snapshot=False)."
+
+        return f"""✅ Document updated: {item.title}
+Path: {item.path}
+Words: {old_words:,} → {new_words:,} ({new_words - old_words:+,})
+
+{snapshot_note}
+
+Open Scrivener to review the changes."""
+    except RuntimeError as e:
+        return f"❌ Error: {e}"
+    except Exception as e:
+        return f"❌ Unexpected error writing document: {e}"
+
+
+@mcp.tool()
+def set_synopsis(identifier: str, synopsis: str) -> str:
+    """Set the synopsis (index card text) for a document.
+
+    The synopsis is the brief summary shown on Scrivener's corkboard/outliner.
+    Great for scene summaries, chapter outlines, or quick notes.
+
+    Args:
+        identifier: Document title, path, or UUID
+        synopsis: The new synopsis text
+
+    Returns:
+        Confirmation of the update.
+    """
+    project = get_project()
+
+    if project.is_locked:
+        return """❌ Project is open in Scrivener!
+
+Close Scrivener before writing to avoid conflicts."""
+
+    # Find the document
+    item = project.find_by_uuid(identifier)
+    if not item:
+        item = project.find_by_path(identifier)
+    if not item:
+        matches = project.find_by_title(identifier, exact=False)
+        item = matches[0] if matches else None
+
+    if not item:
+        return f"Document not found: {identifier}"
+
+    try:
+        old_synopsis = project.read_synopsis(item)
+        project.write_synopsis(item, synopsis)
+
+        return f"""✅ Synopsis updated: {item.title}
+Path: {item.path}
+
+Old synopsis: {old_synopsis[:100] + '...' if len(old_synopsis) > 100 else old_synopsis or '(none)'}
+
+New synopsis: {synopsis[:100] + '...' if len(synopsis) > 100 else synopsis}"""
+    except RuntimeError as e:
+        return f"❌ Error: {e}"
+    except Exception as e:
+        return f"❌ Unexpected error: {e}"
+
+
+@mcp.tool()
+def set_notes(identifier: str, notes: str) -> str:
+    """Set the document notes (inspector notes) for a document.
+
+    Document notes appear in Scrivener's Inspector panel.
+    Use for research notes, reminders, or author comments.
+
+    Args:
+        identifier: Document title, path, or UUID
+        notes: The new notes text
+
+    Returns:
+        Confirmation of the update.
+    """
+    project = get_project()
+
+    if project.is_locked:
+        return """❌ Project is open in Scrivener!
+
+Close Scrivener before writing to avoid conflicts."""
+
+    # Find the document
+    item = project.find_by_uuid(identifier)
+    if not item:
+        item = project.find_by_path(identifier)
+    if not item:
+        matches = project.find_by_title(identifier, exact=False)
+        item = matches[0] if matches else None
+
+    if not item:
+        return f"Document not found: {identifier}"
+
+    try:
+        project.write_notes(item, notes)
+
+        return f"""✅ Notes updated: {item.title}
+Path: {item.path}
+
+Notes set to: {notes[:200] + '...' if len(notes) > 200 else notes}"""
+    except RuntimeError as e:
+        return f"❌ Error: {e}"
+    except Exception as e:
+        return f"❌ Unexpected error: {e}"
+
+
 def main():
     """Run the MCP server.
 

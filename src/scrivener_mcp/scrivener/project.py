@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import re
+import shutil
+from datetime import datetime
 from pathlib import Path
 from typing import Iterator
 
 from .binder import BinderItem, parse_binder
-from .rtf import count_words, read_rtf
+from .rtf import count_words, read_rtf, text_to_rtf
 
 
 class ScrivenerProject:
@@ -190,3 +192,125 @@ class ScrivenerProject:
                     parts.append(content)
 
         return "\n".join(parts)
+
+    # ========== Write Operations ==========
+
+    def get_snapshots_path(self, item: BinderItem) -> Path:
+        """Get the path to the snapshots folder for a binder item."""
+        return self.path / "Snapshots" / "Data" / item.uuid
+
+    def create_snapshot(self, item: BinderItem, title: str | None = None) -> str:
+        """Create a snapshot of a document's current state.
+
+        Args:
+            item: The binder item to snapshot
+            title: Optional title for the snapshot (defaults to timestamp)
+
+        Returns:
+            The snapshot filename
+        """
+        if not item.is_text:
+            raise ValueError(f"Cannot snapshot non-text item: {item.title}")
+
+        # Create snapshots directory if needed
+        snapshots_dir = self.get_snapshots_path(item)
+        snapshots_dir.mkdir(parents=True, exist_ok=True)
+
+        # Generate snapshot filename with timestamp
+        timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        snapshot_title = title or f"Snapshot {timestamp}"
+        safe_title = re.sub(r'[^\w\s-]', '', snapshot_title).strip()
+        snapshot_filename = f"{timestamp} {safe_title}.rtf"
+
+        # Copy current content to snapshot
+        content_path = self.get_content_path(item)
+        snapshot_path = snapshots_dir / snapshot_filename
+
+        if content_path.exists():
+            shutil.copy2(content_path, snapshot_path)
+        else:
+            # Create empty snapshot if no content exists
+            snapshot_path.write_text(text_to_rtf(""), encoding="utf-8")
+
+        return snapshot_filename
+
+    def write_document(self, item: BinderItem, content: str, create_snapshot: bool = True) -> None:
+        """Write content to a document.
+
+        Args:
+            item: The binder item to write to
+            content: The plain text content to write
+            create_snapshot: Whether to create a snapshot before writing (default: True)
+        """
+        if self.is_locked:
+            raise RuntimeError(
+                "Project is open in Scrivener. Close Scrivener before writing."
+            )
+
+        if not item.is_text:
+            raise ValueError(f"Cannot write to non-text item: {item.title}")
+
+        # Create snapshot first (safety measure)
+        if create_snapshot:
+            content_path = self.get_content_path(item)
+            if content_path.exists():
+                self.create_snapshot(item, "Auto-snapshot before edit")
+
+        # Ensure the data directory exists
+        data_dir = self.path / "Files" / "Data" / item.uuid
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write the RTF content
+        content_path = self.get_content_path(item)
+        rtf_content = text_to_rtf(content)
+        content_path.write_text(rtf_content, encoding="utf-8")
+
+    def write_synopsis(self, item: BinderItem, synopsis: str) -> None:
+        """Write the synopsis for a document.
+
+        Args:
+            item: The binder item to update
+            synopsis: The synopsis text
+        """
+        if self.is_locked:
+            raise RuntimeError(
+                "Project is open in Scrivener. Close Scrivener before writing."
+            )
+
+        # Ensure the data directory exists
+        data_dir = self.path / "Files" / "Data" / item.uuid
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        synopsis_path = self.get_synopsis_path(item)
+        synopsis_path.write_text(synopsis.strip(), encoding="utf-8")
+
+    def write_notes(self, item: BinderItem, notes: str, create_snapshot: bool = True) -> None:
+        """Write notes for a document.
+
+        Args:
+            item: The binder item to update
+            notes: The notes text
+            create_snapshot: Whether to snapshot existing notes first
+        """
+        if self.is_locked:
+            raise RuntimeError(
+                "Project is open in Scrivener. Close Scrivener before writing."
+            )
+
+        # Ensure the data directory exists
+        data_dir = self.path / "Files" / "Data" / item.uuid
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        notes_path = self.get_notes_path(item)
+
+        # Snapshot existing notes if they exist
+        if create_snapshot and notes_path.exists():
+            snapshots_dir = self.get_snapshots_path(item)
+            snapshots_dir.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+            snapshot_path = snapshots_dir / f"{timestamp} notes-backup.rtf"
+            shutil.copy2(notes_path, snapshot_path)
+
+        # Write the notes
+        rtf_content = text_to_rtf(notes)
+        notes_path.write_text(rtf_content, encoding="utf-8")
