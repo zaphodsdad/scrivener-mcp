@@ -1,5 +1,6 @@
 """Web app for Scrivener projects - works with any LLM."""
 
+import json
 import os
 from pathlib import Path
 from typing import Optional
@@ -19,14 +20,42 @@ app = FastAPI(title="Scrivener Web App")
 static_dir = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+# Config file path
+CONFIG_FILE = Path.home() / ".scrivener-app.json"
+
+
+def load_config() -> dict:
+    """Load config from file."""
+    default = {
+        "provider": "openrouter",
+        "api_key": os.environ.get("OPENROUTER_API_KEY", ""),
+        "model": "anthropic/claude-sonnet-4-20250514",
+        "base_url": "https://openrouter.ai/api/v1",
+        "last_project": None,
+    }
+    if CONFIG_FILE.exists():
+        try:
+            with open(CONFIG_FILE) as f:
+                saved = json.load(f)
+                default.update(saved)
+        except Exception:
+            pass
+    return default
+
+
+def save_config(config: dict):
+    """Save config to file."""
+    try:
+        # Don't save sensitive data in plain text? For now, we do for convenience
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(config, f, indent=2)
+    except Exception as e:
+        print(f"Warning: Could not save config: {e}")
+
+
 # Global state
 _project: Optional[ScrivenerProject] = None
-_llm_config = {
-    "provider": "openrouter",  # openrouter, anthropic, openai
-    "api_key": os.environ.get("OPENROUTER_API_KEY", ""),
-    "model": "anthropic/claude-sonnet-4-20250514",
-    "base_url": "https://openrouter.ai/api/v1",
-}
+_llm_config = load_config()
 
 
 # === Pydantic Models ===
@@ -143,11 +172,15 @@ async def browse_directory(path: Optional[str] = None):
 @app.post("/api/project/open")
 async def open_project(data: ProjectPath):
     """Open a Scrivener project."""
-    global _project
+    global _project, _llm_config
 
     try:
         project_path = Path(data.path).expanduser().resolve()
         _project = ScrivenerProject(project_path)
+
+        # Remember last project
+        _llm_config["last_project"] = str(project_path)
+        save_config(_llm_config)
 
         return {
             "name": _project.name,
@@ -404,6 +437,7 @@ async def get_llm_config():
         "base_url": _llm_config["base_url"],
         "has_api_key": bool(_llm_config["api_key"]),
         "is_configured": is_configured,
+        "last_project": _llm_config.get("last_project"),
     }
 
 
@@ -448,6 +482,9 @@ async def set_llm_config(config: LLMConfig):
         _llm_config["base_url"] = "https://api.openai.com/v1"
     elif config.provider == "ollama":
         _llm_config["base_url"] = "http://localhost:11434/v1"
+
+    # Save to file
+    save_config(_llm_config)
 
     return {"success": True}
 

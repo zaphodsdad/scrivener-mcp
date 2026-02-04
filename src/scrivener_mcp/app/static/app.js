@@ -23,7 +23,35 @@ async function api(endpoint, options = {}) {
 
 // === Initialization ===
 document.addEventListener("DOMContentLoaded", async () => {
-    // Check project status
+    // Check LLM config and auto-load last project
+    try {
+        const config = await api("/api/llm/config");
+        updateLLMStatus(config);
+
+        // Auto-load last project if available
+        if (config.last_project) {
+            try {
+                const data = await api("/api/project/open", {
+                    method: "POST",
+                    body: JSON.stringify({ path: config.last_project }),
+                });
+                updateProjectStatus(data);
+                await loadBinder();
+
+                // Restore last selected document from localStorage
+                const lastDoc = localStorage.getItem("lastDocument");
+                if (lastDoc) {
+                    await selectDocument(lastDoc);
+                }
+            } catch (e) {
+                console.log("Could not auto-load last project:", e);
+            }
+        }
+    } catch (e) {
+        console.log("Could not load config");
+    }
+
+    // Check if project already loaded (server restart case)
     try {
         const status = await api("/api/project/status");
         if (status.loaded) {
@@ -32,14 +60,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     } catch (e) {
         console.log("No project loaded yet");
-    }
-
-    // Check LLM config
-    try {
-        const config = await api("/api/llm/config");
-        updateLLMStatus(config);
-    } catch (e) {
-        console.log("LLM not configured");
     }
 
     // Event listeners
@@ -222,6 +242,9 @@ async function selectDocument(uuid) {
         const doc = await api(`/api/document/${uuid}`);
         currentDocument = doc;
         displayDocument(doc);
+
+        // Remember selected document
+        localStorage.setItem("lastDocument", uuid);
     } catch (e) {
         alert(`Error loading document: ${e.message}`);
     }
