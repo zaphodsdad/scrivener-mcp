@@ -68,18 +68,28 @@ MyNovel.scriv/
 </ScrivenerProject>
 ```
 
-## Planned MCP Tools
+## Implemented MCP Tools (9 total)
 
-| Tool | Priority | Description |
-|------|----------|-------------|
-| `list_binder` | P0 | Show project structure (folders, documents) |
-| `read_document` | P0 | Read a specific document by title or path |
-| `search_project` | P0 | Full-text search across all documents |
-| `get_word_counts` | P1 | Word count stats per document/folder |
-| `read_manuscript` | P1 | Read all Draft content in compile order |
-| `read_characters` | P2 | Pull character sheets from Research/Characters |
-| `write_document` | P2 | Update a document (auto-snapshot first) |
-| `create_snapshot` | P2 | Manual snapshot before changes |
+| Tool | Description |
+|------|-------------|
+| `find_projects` | Scan common locations (Documents, Dropbox, iCloud) for .scriv projects |
+| `open_project` | Load a Scrivener project by path |
+| `list_binder` | Show project structure (folders, documents) as tree |
+| `read_document` | Read a document by title, path, or UUID |
+| `search_project` | Full-text search across all documents |
+| `get_word_counts` | Word count stats per document/folder |
+| `read_manuscript` | Read all Draft content in compile order |
+| `get_synopsis` | Read the synopsis (index card text) for a document |
+| `get_notes` | Read the inspector notes for a document |
+
+## Planned Tools (Not Yet Implemented)
+
+| Tool | Description |
+|------|-------------|
+| `write_document` | Update a document (auto-snapshot first) |
+| `create_snapshot` | Manual snapshot before changes |
+| `set_synopsis` | Update a scene's synopsis |
+| `get_characters` | Find character sheets in Research folder |
 
 ## Project Structure
 
@@ -88,55 +98,22 @@ scrivener-mcp/
 ├── src/
 │   └── scrivener_mcp/
 │       ├── __init__.py
-│       ├── server.py          # MCP server entry point
-│       ├── scrivener/
-│       │   ├── __init__.py
-│       │   ├── project.py     # ScrivenerProject class
-│       │   ├── binder.py      # Binder/BinderItem parsing
-│       │   ├── document.py    # Document reading/writing
-│       │   └── rtf.py         # RTF conversion utilities
-│       └── tools/
+│       ├── server.py          # MCP server + all tools
+│       └── scrivener/
 │           ├── __init__.py
-│           ├── list_binder.py
-│           ├── read_document.py
-│           ├── search.py
-│           └── ...
-├── tests/
-│   ├── fixtures/              # Sample .scriv project for testing
-│   └── ...
+│           ├── project.py     # ScrivenerProject class
+│           ├── binder.py      # Binder/BinderItem parsing
+│           └── rtf.py         # RTF conversion utilities
 ├── pyproject.toml
-└── README.md
+├── README.md
+└── CLAUDE.md
 ```
-
-## Implementation Phases
-
-### Phase 1: Core Parsing
-1. Parse `.scrivx` XML into Python objects
-2. Read RTF content and convert to plain text
-3. Build document tree with titles, paths, UUIDs
-4. Detect lock files
-
-### Phase 2: MCP Server + Read Tools
-1. Set up MCP server with FastMCP
-2. Implement `list_binder`, `read_document`, `search_project`
-3. Test with Claude Code
-
-### Phase 3: Enhanced Read Features
-1. `get_word_counts`
-2. `read_manuscript` (compile order)
-3. Character/world reading from Research folder
-
-### Phase 4: Write Operations
-1. Snapshot creation before any write
-2. `write_document` implementation
-3. RTF generation/preservation
 
 ## Safety Measures
 
-- **Lock detection:** Check for `user.lock` before any operation
-- **Auto-snapshot:** Create snapshot before every write
-- **RTF preservation:** Keep original formatting when possible
-- **Validation:** Verify binder integrity after writes
+- **Lock detection:** Checks for `user.lock` and warns if project is open in Scrivener
+- **Read-only (for now):** Write operations not yet implemented
+- **Future:** Auto-snapshot before every write, RTF preservation
 
 ## Dependencies
 
@@ -147,32 +124,32 @@ striprtf            # RTF to text conversion
 
 ## Status
 
-**MVP Complete** - Core read functionality working.
+**MVP Complete** - 9 read tools working. No write operations yet.
 
-## Test Project
+## Quick Start (Mac)
 
+```bash
+# Clone and setup
+git clone https://github.com/zaphodsdad/scrivener-mcp.git
+cd scrivener-mcp
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+
+# Test it runs
+scrivener-mcp  # Ctrl+C to exit
 ```
-/root/scrivener-mcp/Scrivner Projects/Neon Syn .scriv
-```
-
-- 228 total items, 187 text documents
-- 64,885 words across 3 books
-- Scrivener 3.4 Mac format
 
 ## Running the Server
 
+**Option 1: Environment variable**
 ```bash
-# Activate venv
-source .venv/bin/activate
-
-# Set project path
-export SCRIVENER_PROJECT="/root/scrivener-mcp/Scrivner Projects/Neon Syn .scriv"
-
-# Run server
+export SCRIVENER_PROJECT="/path/to/Your Novel.scriv"
 scrivener-mcp
 ```
 
-Or configure in Claude Code's MCP settings.
+**Option 2: No config needed**
+Just run `scrivener-mcp` and use `find_projects` or `open_project` tools via Claude.
 
 ## Claude Desktop Configuration
 
@@ -182,20 +159,22 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac):
 {
   "mcpServers": {
     "scrivener": {
-      "command": "/path/to/scrivener-mcp/.venv/bin/scrivener-mcp",
-      "env": {
-        "SCRIVENER_PROJECT": "/path/to/Your Novel.scriv"
-      }
+      "command": "/path/to/scrivener-mcp/.venv/bin/scrivener-mcp"
     }
   }
 }
 ```
 
+Note: `SCRIVENER_PROJECT` env var is optional. Without it, use `find_projects` to discover projects.
+
 Then restart Claude Desktop. You can ask things like:
+- "Find my Scrivener projects"
+- "Open Neon Syn"
 - "List the chapters in my novel"
 - "Search for mentions of the red door"
 - "Read Chapter 5"
 - "What's my word count by chapter?"
+- "Show me the synopsis for Chapter 3"
 
 ---
 
