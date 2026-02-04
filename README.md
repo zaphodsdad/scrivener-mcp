@@ -1,37 +1,33 @@
 # Scrivener MCP
 
-An MCP server that connects AI assistants to your Scrivener writing projects.
+A read-only MCP server that connects AI assistants to your Scrivener writing projects.
 
-**Status:** Phase 1 Complete (read + write) | [See Roadmap](ROADMAP.md)
+Work in Scrivener, ask Claude for help. Claude can see your entire project - structure, content, notes, synopses - but all writing happens in Scrivener where it belongs.
+
+## What can it do?
+
+Point your AI assistant at your novel and ask:
+- "Find inconsistencies in my character descriptions"
+- "What plot threads are unresolved?"
+- "Where do I mention the lighthouse?"
+- "What's my word count by chapter?"
+- "Read the synopsis for Chapter 3"
 
 ## Supported Platforms
 
 | Platform | Client | Status |
 |----------|--------|--------|
 | macOS | Claude Desktop | Supported |
-| macOS | LibreChat | Supported |
 | Windows | Claude Desktop | Supported |
-| Windows | LibreChat (Docker/WSL) | Supported |
-| Linux | LibreChat | Supported |
 | Linux | Claude Desktop | [Community build](https://github.com/aaddrick/claude-desktop-debian) |
 
-> **Note:** ChatGPT is *not* an MCP client and does not support MCP servers.
-
-## What is this?
-
-[Scrivener](https://www.literatureandlatte.com/scrivener/overview) is a beloved writing app for novelists, screenwriters, and long-form writers. This MCP server lets AI assistants read and understand your Scrivener projects.
-
-Point your AI assistant at your novel and ask:
-- "Find inconsistencies in my character descriptions"
-- "What plot threads are unresolved?"
-- "Help me write the next scene"
-- "Where do I mention the lighthouse?"
+> **Note:** This is designed for Claude Desktop. Other MCP clients may work but are untested.
 
 ## Requirements
 
 - Python 3.10+
 - Scrivener 3 project (.scriv folder)
-- **Important:** Close your project in Scrivener before using this tool
+- Claude Desktop
 
 ## Installation
 
@@ -48,9 +44,7 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-## Usage
-
-### With Claude Desktop (Mac/Windows)
+## Setup with Claude Desktop
 
 Add to your config file:
 - **Mac:** `~/Library/Application Support/Claude/claude_desktop_config.json`
@@ -60,59 +54,15 @@ Add to your config file:
 {
   "mcpServers": {
     "scrivener": {
-      "command": "/path/to/scrivener-mcp/.venv/bin/scrivener-mcp",
-      "env": {
-        "SCRIVENER_PROJECT": "/path/to/your/Novel.scriv"
-      }
+      "command": "/path/to/scrivener-mcp/.venv/bin/scrivener-mcp"
     }
   }
 }
 ```
 
-Restart Claude Desktop. The `SCRIVENER_PROJECT` env var is optional - you can use `find_projects` or `open_project` tools instead.
+Restart Claude Desktop. That's it.
 
-### With LibreChat
-
-LibreChat supports MCP via SSE transport. You need to run the server in HTTP mode.
-
-**Step 1: Start the MCP server**
-```bash
-cd scrivener-mcp
-source .venv/bin/activate
-export SCRIVENER_PROJECT="/path/to/your/Novel.scriv"
-
-# Run with SSE transport
-python -c "
-import uvicorn
-from scrivener_mcp.server import mcp
-app = mcp.sse_app()
-uvicorn.run(app, host='0.0.0.0', port=8000)
-"
-```
-
-**Step 2: Configure LibreChat**
-
-Add to `librechat.yaml`:
-```yaml
-version: 1.2.1
-
-mcpSettings:
-  allowedDomains:
-    - 'host.docker.internal'  # For Docker on Mac/Windows
-    - 'localhost'
-
-mcpServers:
-  scrivener:
-    type: sse
-    url: http://host.docker.internal:8000/sse  # Docker
-    # url: http://localhost:8000/sse           # Native install
-```
-
-Restart LibreChat and the MCP tools will be available.
-
-### Available Tools
-
-**Read Tools:**
+## Available Tools (9)
 
 | Tool | Description |
 |------|-------------|
@@ -126,25 +76,18 @@ Restart LibreChat and the MCP tools will be available.
 | `get_synopsis` | Read the synopsis (index card text) for a document |
 | `get_notes` | Read the inspector notes for a document |
 
-**Write Tools:**
+## Example Prompts
 
-| Tool | Description |
-|------|-------------|
-| `create_snapshot` | Create a backup snapshot before making changes |
-| `write_document` | Update document content (with auto-snapshot) |
-| `set_synopsis` | Update a document's synopsis |
-| `set_notes` | Update a document's inspector notes |
-| `create_document` | Create a new document in a folder |
+Once connected, try:
 
-### Example Prompts
-
-Once connected, you can ask things like:
-
+- "Find my Scrivener projects"
+- "Open [your project name]"
 - "List the chapters in my novel"
 - "Read Chapter 1"
 - "Search for mentions of 'red door'"
 - "What's my word count by chapter?"
 - "Show me the synopsis for Chapter 3"
+- "Read the manuscript and find plot holes"
 
 ## How It Works
 
@@ -154,30 +97,21 @@ Scrivener projects are actually folders containing:
 
 This server parses the XML to understand your project structure, then reads and converts the RTF files to plain text for the AI to analyze.
 
-## Safety Features
+## Why Read-Only?
 
-- **Lock detection:** Refuses writes if Scrivener has the project open (`user.lock`)
-- **Auto-snapshot:** Creates backup before every write operation
-- **User approval:** Write tools prompt AI to show content and get confirmation before writing
-- **RTF preservation:** Converts plain text to proper RTF format
+Scrivener is excellent software. Write in Scrivener. Use this MCP to give Claude context about your work so it can help you think through problems, find inconsistencies, and answer questions about your manuscript.
 
-## Roadmap
-
-See [ROADMAP.md](ROADMAP.md) for planned features including:
-- Grammar checking (LanguageTool integration)
-- Character extraction and profiling
-- POV analysis
-- Export to markdown
+All writing stays in Scrivener where it belongs.
 
 ## Limitations
 
 - Scrivener 3 format only (Scrivener 1/2 not tested)
 - Some RTF formatting may not convert perfectly
-- Project must be closed in Scrivener for write operations
+- Read-only by design
 
 ## Related Projects
 
-- [Prometheus](https://github.com/zaphodsdad/prose-pipeline) - AI-powered prose generation for storytellers
+- [prose-pipeline](https://github.com/zaphodsdad/prose-pipeline) - AI-powered prose generation
 
 ## License
 
