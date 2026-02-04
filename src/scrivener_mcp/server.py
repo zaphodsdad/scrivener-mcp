@@ -6,11 +6,26 @@ import platform
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 from .scrivener import ScrivenerProject
 
+# Configure transport security to allow Docker and local connections
+transport_security = TransportSecuritySettings(
+    enable_dns_rebinding_protection=True,
+    allowed_hosts=[
+        "localhost",
+        "localhost:8000",
+        "127.0.0.1",
+        "127.0.0.1:8000",
+        "host.docker.internal",
+        "host.docker.internal:8000",
+        "0.0.0.0:8000",
+    ],
+)
+
 # Initialize the MCP server
-mcp = FastMCP("scrivener-mcp")
+mcp = FastMCP("scrivener-mcp", transport_security=transport_security)
 
 # Global project reference (set via environment or tool)
 _project: ScrivenerProject | None = None
@@ -520,8 +535,11 @@ def main():
     args = parser.parse_args()
 
     if args.http:
+        # Set uvicorn host/port via environment variables
+        os.environ["UVICORN_HOST"] = args.host
+        os.environ["UVICORN_PORT"] = str(args.port)
         print(f"Starting Scrivener MCP server (HTTP) on {args.host}:{args.port}")
-        mcp.run(transport="streamable-http", host=args.host, port=args.port)
+        mcp.run(transport="streamable-http")
     else:
         mcp.run()  # stdio transport for Claude Desktop
 

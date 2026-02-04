@@ -4,7 +4,9 @@ An MCP server that connects AI assistants to your Scrivener writing projects.
 
 **Status:** MVP Complete (read-only)
 
-**Supported Clients:** Claude Desktop, ChatGPT, LibreChat, and any MCP-compatible assistant
+**Supported Clients:** Claude Desktop, LibreChat, and other MCP-compatible clients
+
+> **Note:** ChatGPT is *not* an MCP client. Despite web searches suggesting otherwise, ChatGPT Desktop does not support connecting to MCP servers.
 
 ## What is this?
 
@@ -44,12 +46,11 @@ pip install -e .
 The server supports two transport modes:
 
 - **stdio** (default): For Claude Desktop and local MCP clients
-- **HTTP**: For ChatGPT and remote clients
+- **HTTP**: For remote clients (LibreChat on a server, etc.)
 
 ```bash
-scrivener-mcp              # stdio mode (Claude Desktop)
-scrivener-mcp --http       # HTTP mode on port 8000
-scrivener-mcp --http --port 9000  # HTTP mode on custom port
+scrivener-mcp              # stdio mode (Claude Desktop, local LibreChat)
+scrivener-mcp --http       # HTTP mode on port 8000 (remote access)
 ```
 
 ### With Claude Desktop
