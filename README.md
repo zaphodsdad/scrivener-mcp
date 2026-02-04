@@ -2,11 +2,20 @@
 
 An MCP server that connects AI assistants to your Scrivener writing projects.
 
-**Status:** MVP Complete (read-only)
+**Status:** MVP Complete (read-only) | [See Roadmap](ROADMAP.md)
 
-**Supported Clients:** Claude Desktop, LibreChat, and other MCP-compatible clients
+## Supported Platforms
 
-> **Note:** ChatGPT is *not* an MCP client. Despite web searches suggesting otherwise, ChatGPT Desktop does not support connecting to MCP servers.
+| Platform | Client | Status |
+|----------|--------|--------|
+| macOS | Claude Desktop | Supported |
+| macOS | LibreChat | Supported |
+| Windows | Claude Desktop | Supported |
+| Windows | LibreChat (Docker/WSL) | Supported |
+| Linux | LibreChat | Supported |
+| Linux | Claude Desktop | [Community build](https://github.com/aaddrick/claude-desktop-debian) |
+
+> **Note:** ChatGPT is *not* an MCP client and does not support MCP servers.
 
 ## What is this?
 
@@ -41,21 +50,11 @@ pip install -e .
 
 ## Usage
 
-### Transport Modes
+### With Claude Desktop (Mac/Windows)
 
-The server supports two transport modes:
-
-- **stdio** (default): For Claude Desktop and local MCP clients
-- **HTTP**: For remote clients (LibreChat on a server, etc.)
-
-```bash
-scrivener-mcp              # stdio mode (Claude Desktop, local LibreChat)
-scrivener-mcp --http       # HTTP mode on port 8000 (remote access)
-```
-
-### With Claude Desktop
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac):
+Add to your config file:
+- **Mac:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
@@ -70,49 +69,46 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac):
 }
 ```
 
-Or use the `open_project` tool to set the project path dynamically.
-
-### With ChatGPT
-
-ChatGPT requires an HTTP server accessible from the internet. You'll need to expose your local server using a tunnel (Cloudflare Tunnel, ngrok, etc.).
-
-**Step 1: Start the HTTP server**
-```bash
-source /path/to/scrivener-mcp/.venv/bin/activate
-export SCRIVENER_PROJECT="/path/to/your/Novel.scriv"
-scrivener-mcp --http --port 8000
-```
-
-**Step 2: Expose via Cloudflare Tunnel** (recommended)
-```bash
-# Install cloudflared
-brew install cloudflared  # or apt install cloudflared
-
-# Quick tunnel (random URL, no account needed)
-cloudflared tunnel --url http://localhost:8000
-
-# Or set up a persistent tunnel with your domain
-cloudflared tunnel create scrivener
-cloudflared tunnel route dns scrivener mcp.yourdomain.com
-cloudflared tunnel run scrivener
-```
-
-**Step 3: Configure ChatGPT**
-1. Open ChatGPT Desktop
-2. Go to Settings → Connectors → Advanced → Developer mode
-3. Add your MCP server URL (e.g., `https://mcp.yourdomain.com/mcp`)
+Restart Claude Desktop. The `SCRIVENER_PROJECT` env var is optional - you can use `find_projects` or `open_project` tools instead.
 
 ### With LibreChat
 
-LibreChat has native MCP support. Add to your `librechat.yaml`:
+LibreChat supports MCP via SSE transport. You need to run the server in HTTP mode.
 
+**Step 1: Start the MCP server**
+```bash
+cd scrivener-mcp
+source .venv/bin/activate
+export SCRIVENER_PROJECT="/path/to/your/Novel.scriv"
+
+# Run with SSE transport
+python -c "
+import uvicorn
+from scrivener_mcp.server import mcp
+app = mcp.sse_app()
+uvicorn.run(app, host='0.0.0.0', port=8000)
+"
+```
+
+**Step 2: Configure LibreChat**
+
+Add to `librechat.yaml`:
 ```yaml
+version: 1.2.1
+
+mcpSettings:
+  allowedDomains:
+    - 'host.docker.internal'  # For Docker on Mac/Windows
+    - 'localhost'
+
 mcpServers:
   scrivener:
-    command: /path/to/scrivener-mcp/.venv/bin/scrivener-mcp
-    env:
-      SCRIVENER_PROJECT: /path/to/your/Novel.scriv
+    type: sse
+    url: http://host.docker.internal:8000/sse  # Docker
+    # url: http://localhost:8000/sse           # Native install
 ```
+
+Restart LibreChat and the MCP tools will be available.
 
 ### Available Tools
 
@@ -130,13 +126,13 @@ mcpServers:
 
 ### Example Prompts
 
-Once connected, you can ask Claude things like:
+Once connected, you can ask things like:
 
 - "List the chapters in my novel"
 - "Read Chapter 1"
 - "Search for mentions of 'red door'"
 - "What's my word count by chapter?"
-- "Read the full manuscript"
+- "Show me the synopsis for Chapter 3"
 
 ## How It Works
 
@@ -148,9 +144,17 @@ This server parses the XML to understand your project structure, then reads and 
 
 **Safety:** The server detects if Scrivener has the project open (via `user.lock` file) and warns you to avoid conflicts.
 
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for planned features including:
+- Write operations (edit scenes, update synopses)
+- Grammar checking (LanguageTool integration)
+- Character extraction and profiling
+- Export to markdown
+
 ## Limitations
 
-- **Read-only for now** - write operations coming soon
+- **Read-only for now** - write operations coming soon (see roadmap)
 - Scrivener 3 format only (Scrivener 1/2 not tested)
 - Some RTF formatting may not convert perfectly
 
