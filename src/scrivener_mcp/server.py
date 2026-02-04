@@ -1,6 +1,7 @@
 """MCP Server for Scrivener projects."""
 
 import os
+import platform
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -12,6 +13,55 @@ mcp = FastMCP("scrivener-mcp")
 
 # Global project reference (set via environment or tool)
 _project: ScrivenerProject | None = None
+
+
+def get_common_scrivener_locations() -> list[Path]:
+    """Get common locations where Scrivener projects might be stored."""
+    home = Path.home()
+
+    locations = [
+        home / "Documents",
+        home / "Scrivener",
+        home / "Writing",
+        home / "Dropbox",
+        home / "Desktop",
+    ]
+
+    # Add platform-specific locations
+    if platform.system() == "Darwin":  # macOS
+        locations.extend([
+            home / "Library" / "Mobile Documents" / "com~apple~CloudDocs",  # iCloud
+            home / "Library" / "Mobile Documents" / "com~apple~CloudDocs" / "Documents",
+            home / "Library" / "Mobile Documents" / "com~apple~CloudDocs" / "Scrivener",
+        ])
+    elif platform.system() == "Windows":
+        locations.extend([
+            home / "OneDrive" / "Documents",
+            home / "OneDrive",
+        ])
+
+    return [loc for loc in locations if loc.exists()]
+
+
+def find_scriv_folders(search_path: Path, max_depth: int = 3) -> list[Path]:
+    """Recursively find .scriv folders up to max_depth."""
+    results = []
+
+    try:
+        for item in search_path.iterdir():
+            if item.is_dir():
+                if item.suffix == ".scriv":
+                    # Verify it's a valid Scrivener project (has .scrivx file)
+                    scrivx_files = list(item.glob("*.scrivx"))
+                    if scrivx_files:
+                        results.append(item)
+                elif max_depth > 0 and not item.name.startswith("."):
+                    # Recurse into subdirectories
+                    results.extend(find_scriv_folders(item, max_depth - 1))
+    except PermissionError:
+        pass  # Skip directories we can't access
+
+    return results
 
 
 def get_project() -> ScrivenerProject:
@@ -28,6 +78,61 @@ def get_project() -> ScrivenerProject:
         _project = ScrivenerProject(project_path)
 
     return _project
+
+
+@mcp.tool()
+def find_projects(search_path: str | None = None) -> str:
+    """Find Scrivener projects on your computer.
+
+    Searches common locations (Documents, Dropbox, iCloud, etc.) for .scriv folders.
+    Use this to discover available projects, then use open_project to load one.
+
+    Args:
+        search_path: Optional specific folder to search. If not provided,
+                    searches common locations like Documents, Dropbox, iCloud.
+
+    Returns:
+        List of found Scrivener projects with their paths.
+    """
+    projects = []
+
+    if search_path:
+        # Search specific path
+        search_dir = Path(search_path).expanduser().resolve()
+        if search_dir.exists():
+            projects = find_scriv_folders(search_dir, max_depth=4)
+    else:
+        # Search common locations
+        for location in get_common_scrivener_locations():
+            projects.extend(find_scriv_folders(location, max_depth=3))
+
+    if not projects:
+        if search_path:
+            return f"No Scrivener projects found in: {search_path}"
+        return """No Scrivener projects found in common locations.
+
+Try searching a specific folder:
+  find_projects("/path/to/your/writing/folder")
+
+Or open a project directly:
+  open_project("/path/to/Your Novel.scriv")"""
+
+    # Sort by name
+    projects.sort(key=lambda p: p.name.lower())
+
+    output = [f"Found {len(projects)} Scrivener project(s):\n"]
+
+    for proj in projects:
+        # Get basic info without fully loading the project
+        name = proj.stem
+        output.append(f"📚 {name}")
+        output.append(f"   Path: {proj}")
+
+    output.append("\n" + "=" * 40)
+    output.append("To open a project, say: 'Open [project name]'")
+    output.append("Or use: open_project(\"/path/to/project.scriv\")")
+
+    return "\n".join(output)
 
 
 @mcp.tool()
@@ -301,6 +406,82 @@ def read_manuscript(include_titles: bool = True, chapter: str | None = None) -> 
         return "\n".join(parts)
 
     return project.get_manuscript_text(include_titles=include_titles)
+
+
+@mcp.tool()
+def get_synopsis(identifier: str) -> str:
+    """Get the synopsis (short summary) of a document.
+
+    In Scrivener, the synopsis is a brief description shown on index cards
+    in corkboard view. Useful for understanding scene/chapter summaries.
+
+    Args:
+        identifier: Document title, path, or UUID
+
+    Returns:
+        The synopsis text, or a message if no synopsis exists.
+    """
+    project = get_project()
+
+    # Find the document
+    item = project.find_by_uuid(identifier)
+    if not item:
+        item = project.find_by_path(identifier)
+    if not item:
+        matches = project.find_by_title(identifier, exact=False)
+        item = matches[0] if matches else None
+
+    if not item:
+        return f"Document not found: {identifier}"
+
+    synopsis = project.read_synopsis(item)
+
+    if not synopsis:
+        return f"📄 {item.title}\nPath: {item.path}\n\nNo synopsis set for this document."
+
+    return f"""📄 {item.title}
+Path: {item.path}
+
+Synopsis:
+{synopsis}"""
+
+
+@mcp.tool()
+def get_notes(identifier: str) -> str:
+    """Get the document notes (inspector notes) for a document.
+
+    In Scrivener, document notes appear in the inspector panel and contain
+    author notes, research, reminders, etc.
+
+    Args:
+        identifier: Document title, path, or UUID
+
+    Returns:
+        The notes text, or a message if no notes exist.
+    """
+    project = get_project()
+
+    # Find the document
+    item = project.find_by_uuid(identifier)
+    if not item:
+        item = project.find_by_path(identifier)
+    if not item:
+        matches = project.find_by_title(identifier, exact=False)
+        item = matches[0] if matches else None
+
+    if not item:
+        return f"Document not found: {identifier}"
+
+    notes = project.read_notes(item)
+
+    if not notes:
+        return f"📄 {item.title}\nPath: {item.path}\n\nNo notes for this document."
+
+    return f"""📄 {item.title}
+Path: {item.path}
+
+Notes:
+{notes}"""
 
 
 def main():

@@ -96,10 +96,30 @@ class ScrivenerProject:
         """Get the path to the content.rtf file for a binder item."""
         return self.path / "Files" / "Data" / item.uuid / "content.rtf"
 
+    def get_synopsis_path(self, item: BinderItem) -> Path:
+        """Get the path to the synopsis.txt file for a binder item."""
+        return self.path / "Files" / "Data" / item.uuid / "synopsis.txt"
+
+    def get_notes_path(self, item: BinderItem) -> Path:
+        """Get the path to the notes.rtf file for a binder item."""
+        return self.path / "Files" / "Data" / item.uuid / "notes.rtf"
+
     def read_document(self, item: BinderItem) -> str:
         """Read the text content of a document."""
         content_path = self.get_content_path(item)
         return read_rtf(content_path)
+
+    def read_synopsis(self, item: BinderItem) -> str:
+        """Read the synopsis for a document."""
+        synopsis_path = self.get_synopsis_path(item)
+        if synopsis_path.exists():
+            return synopsis_path.read_text(encoding="utf-8", errors="ignore").strip()
+        return ""
+
+    def read_notes(self, item: BinderItem) -> str:
+        """Read the notes for a document."""
+        notes_path = self.get_notes_path(item)
+        return read_rtf(notes_path)
 
     def get_word_count(self, item: BinderItem, recursive: bool = False) -> int:
         """Get the word count for an item (optionally including children)."""
