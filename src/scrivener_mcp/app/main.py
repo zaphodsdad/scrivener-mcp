@@ -403,6 +403,27 @@ async def get_llm_config():
     }
 
 
+@app.get("/api/llm/models")
+async def get_available_models():
+    """Get available models from current provider (for Ollama)."""
+    if _llm_config["provider"] != "ollama":
+        return {"models": [], "error": "Only supported for Ollama"}
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{_llm_config['base_url']}/models",
+                timeout=10.0,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return {
+                "models": [m["id"] for m in data.get("data", [])]
+            }
+    except Exception as e:
+        return {"models": [], "error": str(e)}
+
+
 @app.post("/api/llm/config")
 async def set_llm_config(config: LLMConfig):
     """Update LLM configuration."""

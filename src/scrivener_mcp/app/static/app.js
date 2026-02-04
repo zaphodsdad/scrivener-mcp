@@ -453,7 +453,7 @@ function openSettingsModal() {
     $("#setting-provider").onchange = (e) => updateProviderUI(e.target.value);
 }
 
-function updateProviderUI(provider) {
+async function updateProviderUI(provider) {
     const baseUrlGroup = $("#base-url-group");
     const apiKeyHint = $("#api-key-hint");
     const modelSelect = $("#setting-model-select");
@@ -479,6 +479,26 @@ function updateProviderUI(provider) {
 
     // Populate model dropdown
     modelSelect.innerHTML = '<option value="">-- Select a model --</option>';
+
+    // For Ollama, fetch actually installed models
+    if (provider === "ollama") {
+        try {
+            const data = await api("/api/llm/models");
+            if (data.models && data.models.length > 0) {
+                data.models.forEach(modelId => {
+                    const opt = document.createElement("option");
+                    opt.value = modelId;
+                    opt.textContent = modelId;
+                    modelSelect.appendChild(opt);
+                });
+                return;
+            }
+        } catch (e) {
+            console.log("Could not fetch Ollama models:", e);
+        }
+    }
+
+    // Fall back to presets
     const models = MODEL_PRESETS[provider] || [];
     models.forEach(m => {
         const opt = document.createElement("option");
