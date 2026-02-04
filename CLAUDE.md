@@ -125,6 +125,7 @@ scrivener-mcp/
 
 - **Lock detection:** Checks for `user.lock` and refuses writes if project is open in Scrivener
 - **Auto-snapshot:** Creates backup snapshot before every write operation
+- **User approval:** Write tools instruct AI to show content and get user approval before writing
 - **RTF preservation:** Converts plain text to proper RTF format for Scrivener compatibility
 
 ## Dependencies

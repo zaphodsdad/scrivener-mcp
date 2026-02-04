@@ -2,7 +2,7 @@
 
 An MCP server that connects AI assistants to your Scrivener writing projects.
 
-**Status:** MVP Complete (read-only) | [See Roadmap](ROADMAP.md)
+**Status:** Phase 1 Complete (read + write) | [See Roadmap](ROADMAP.md)
 
 ## Supported Platforms
 
@@ -112,6 +112,8 @@ Restart LibreChat and the MCP tools will be available.
 
 ### Available Tools
 
+**Read Tools:**
+
 | Tool | Description |
 |------|-------------|
 | `find_projects` | Scan common locations for Scrivener projects |
@@ -123,6 +125,16 @@ Restart LibreChat and the MCP tools will be available.
 | `read_manuscript` | Read the full manuscript in compile order |
 | `get_synopsis` | Read the synopsis (index card text) for a document |
 | `get_notes` | Read the inspector notes for a document |
+
+**Write Tools:**
+
+| Tool | Description |
+|------|-------------|
+| `create_snapshot` | Create a backup snapshot before making changes |
+| `write_document` | Update document content (with auto-snapshot) |
+| `set_synopsis` | Update a document's synopsis |
+| `set_notes` | Update a document's inspector notes |
+| `create_document` | Create a new document in a folder |
 
 ### Example Prompts
 
@@ -142,21 +154,26 @@ Scrivener projects are actually folders containing:
 
 This server parses the XML to understand your project structure, then reads and converts the RTF files to plain text for the AI to analyze.
 
-**Safety:** The server detects if Scrivener has the project open (via `user.lock` file) and warns you to avoid conflicts.
+## Safety Features
+
+- **Lock detection:** Refuses writes if Scrivener has the project open (`user.lock`)
+- **Auto-snapshot:** Creates backup before every write operation
+- **User approval:** Write tools prompt AI to show content and get confirmation before writing
+- **RTF preservation:** Converts plain text to proper RTF format
 
 ## Roadmap
 
 See [ROADMAP.md](ROADMAP.md) for planned features including:
-- Write operations (edit scenes, update synopses)
 - Grammar checking (LanguageTool integration)
 - Character extraction and profiling
+- POV analysis
 - Export to markdown
 
 ## Limitations
 
-- **Read-only for now** - write operations coming soon (see roadmap)
 - Scrivener 3 format only (Scrivener 1/2 not tested)
 - Some RTF formatting may not convert perfectly
+- Project must be closed in Scrivener for write operations
 
 ## Related Projects
 
