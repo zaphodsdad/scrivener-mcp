@@ -10,6 +10,19 @@ __pycache__/
 dist/
 build/
 
+# Environment & Secrets
+.env
+*.env.local
+secrets.yaml
+secrets.*
+credentials*
+*.pem
+*.key
+
+# Data
+*.db
+*.sqlite3
+
 # Test data (user's actual Scrivener projects)
 Scrivner Projects/
 *.scriv/
@@ -23,3 +36,6 @@ Scrivner Projects/
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+*.log
