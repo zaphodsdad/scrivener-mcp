@@ -515,7 +515,7 @@ def scan_project(folder_path: str | None = None) -> str:
     loading every document into memory.
 
     Use this to get a bird's eye view, then use read_document or
-    read_manuscript(chapter="...") to dive deeper into specific sections.
+    read_chapter(chapter="...") to dive deeper into specific sections.
 
     Args:
         folder_path: Optional path to scan a specific folder (e.g., "Book One").
@@ -596,7 +596,7 @@ def scan_project(folder_path: str | None = None) -> str:
         output.extend(scan_item(child))
 
     output.append("\n---")
-    output.append("💡 **Tip:** Use `read_manuscript(chapter=\"Chapter Name\")` to read a specific chapter in full.")
+    output.append("💡 **Tip:** Use `read_chapter(chapter=\"Chapter Name\")` to read a specific chapter in full.")
 
     return "\n".join(output)
 
